@@ -12,6 +12,11 @@ func (e *HTTPError) Error() string {
 	return fmt.Sprintf("jmap http %d: %s", e.StatusCode, truncate(e.Body, 300))
 }
 
+// Retryable reports whether the HTTP error is transient (429 / 5xx).
+func (e *HTTPError) Retryable() bool {
+	return e.StatusCode == 429 || e.StatusCode >= 500
+}
+
 // MethodError is a JMAP method-level error (an "error" response invocation).
 type MethodError struct {
 	Type        string `json:"type"`
@@ -24,6 +29,10 @@ func (e *MethodError) Error() string {
 	}
 	return fmt.Sprintf("jmap method error %q", e.Type)
 }
+
+// Retryable reports whether retrying could help. Method-level errors (bad
+// arguments, cannotCalculateChanges, …) are deterministic, so they are not.
+func (e *MethodError) Retryable() bool { return false }
 
 // IsCannotCalculateChanges reports whether err is the JMAP
 // "cannotCalculateChanges" method error (state token too old) — the caller
