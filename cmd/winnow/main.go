@@ -11,6 +11,10 @@ package main
 import (
 	"fmt"
 	"os"
+
+	// Embed the timezone database so time.LoadLocation works in a scratch/
+	// distroless container that has no system zoneinfo.
+	_ "time/tzdata"
 )
 
 // Build metadata, injected via -ldflags at release time.

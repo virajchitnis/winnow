@@ -1,13 +1,152 @@
 package main
 
-import "errors"
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-// runService boots the long-running service (scheduler + web dashboard).
-//
-// This is a placeholder wired up in the internal/schedule + internal/web step
-// of the build order. Keeping the signature stable lets the CLI and the rest of
-// the scaffold compile while those modules are built.
+	"winnow/internal/actions"
+	"winnow/internal/classify"
+	"winnow/internal/config"
+	"winnow/internal/jmap"
+	"winnow/internal/schedule"
+	"winnow/internal/store"
+)
+
+// app bundles the constructed dependencies.
+type app struct {
+	cfg       *config.Config
+	store     *store.Store
+	jmap      *jmap.Client
+	scheduler *schedule.Scheduler
+	log       *slog.Logger
+}
+
+// build constructs the application graph from configuration.
+func build() (*app, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+	st, err := store.Open(cfg.DBPath)
+	if err != nil {
+		return nil, fmt.Errorf("open store: %w", err)
+	}
+	if err := st.SeedSettings(cfg.Defaults); err != nil {
+		return nil, err
+	}
+	if err := st.SeedCategories(); err != nil {
+		return nil, err
+	}
+
+	jc := jmap.New(cfg.FastmailToken)
+	cl := classify.New(classify.NewAnthropic(cfg.AnthropicAPIKey), st)
+	ap := actions.NewApplier(jc)
+
+	sched := schedule.New(schedule.Deps{
+		Store:      st,
+		Mail:       jc,
+		Classifier: cl,
+		Applier:    ap,
+		Defaults:   cfg.Defaults,
+		Logger:     logger,
+	})
+
+	return &app{cfg: cfg, store: st, jmap: jc, scheduler: sched, log: logger}, nil
+}
+
+// runService runs the long-running service (scheduler + HTTP server) or, when
+// invoked as `winnow sweep`, runs the one-time initial sweep.
 func runService(args []string) error {
-	_ = args
-	return errors.New("service not yet implemented (wired up in the scheduler/web build step)")
+	if len(args) > 0 && args[0] == "sweep" {
+		return runSweep(args[1:])
+	}
+
+	a, err := build()
+	if err != nil {
+		return err
+	}
+	defer a.store.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// HTTP server. The full dashboard mounts here; for now it serves /healthz.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", a.healthHandler)
+	srv := &http.Server{Addr: a.cfg.Listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+
+	go func() {
+		a.log.Info("http server listening", "addr", a.cfg.Listen)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			a.log.Error("http server error", "err", err)
+			stop()
+		}
+	}()
+
+	// Scheduler runs until the context is cancelled.
+	done := make(chan struct{})
+	go func() {
+		a.scheduler.Run(ctx)
+		close(done)
+	}()
+
+	<-ctx.Done()
+	a.log.Info("shutting down")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(shutdownCtx)
+	<-done // let the current cycle finish (graceful)
+	return nil
+}
+
+func runSweep(args []string) error {
+	fs := flag.NewFlagSet("sweep", flag.ContinueOnError)
+	apply := fs.Bool("apply", false, "apply moves (default: dry-run preview)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	a, err := build()
+	if err != nil {
+		return err
+	}
+	defer a.store.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	res, err := a.scheduler.Sweep(ctx, *apply)
+	if err != nil {
+		return err
+	}
+	mode := "preview (dry-run)"
+	if *apply {
+		mode = "applied"
+	}
+	fmt.Printf("sweep %s: considered %d, processed %d\n", mode, res.Considered, res.Processed)
+	return nil
+}
+
+func (a *app) healthHandler(w http.ResponseWriter, _ *http.Request) {
+	h := a.scheduler.HealthSnapshot()
+	status := http.StatusOK
+	// Unhealthy if we've polled at least once and the last poll failed.
+	if !h.LastPollAt.IsZero() && !h.LastPollOK {
+		status = http.StatusServiceUnavailable
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	fmt.Fprintf(w, `{"last_poll_at":%q,"last_poll_ok":%t,"running":%t,"error":%q}`,
+		h.LastPollAt.Format(time.RFC3339), h.LastPollOK, h.Running, h.LastPollError)
 }
