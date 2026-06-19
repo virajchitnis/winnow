@@ -1,0 +1,28 @@
+# Secrets and local config — never commit
+.env
+.env.*
+!.env.example
+!.env.deploy.example
+
+# Cloudflare tunnel credentials/config
+cloudflared/
+
+# SQLite database and backups
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# Build artifacts
+/bin/
+/dist/
+/winnow
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
