@@ -15,6 +15,7 @@ import (
 	"winnow/internal/actions"
 	"winnow/internal/classify"
 	"winnow/internal/config"
+	"winnow/internal/digest"
 	"winnow/internal/jmap"
 	"winnow/internal/schedule"
 	"winnow/internal/store"
@@ -51,12 +52,14 @@ func build() (*app, error) {
 	jc := jmap.New(cfg.FastmailToken)
 	cl := classify.New(classify.NewAnthropic(cfg.AnthropicAPIKey), st)
 	ap := actions.NewApplier(jc)
+	dg := digest.New(st, jc)
 
 	sched := schedule.New(schedule.Deps{
 		Store:      st,
 		Mail:       jc,
 		Classifier: cl,
 		Applier:    ap,
+		Digester:   dg,
 		Defaults:   cfg.Defaults,
 		Logger:     logger,
 	})
