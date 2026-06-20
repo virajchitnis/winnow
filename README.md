@@ -30,18 +30,23 @@ over time. The name comes from *winnowing*: separating the grain from the chaff.
 
 ## Quickstart
 
+> You need only **Docker** on your server. Go is not required.
+
 1. **Create a Fastmail API token** — *Settings → Privacy & Security → Manage API
    tokens*. Grant **Mail**, **Submission**, and **Sieve** scopes.
 
-2. **Generate a dashboard password hash:**
+2. **Generate a dashboard password hash** (build the image first, or use a
+   published release):
 
    ```sh
-   docker run --rm ghcr.io/<owner>/winnow hashpw
+   docker build -t winnow .
+   docker run --rm -it winnow hashpw
    # enter a password when prompted; copy the printed bcrypt hash
    ```
 
 3. **Configure** — copy `.env.example` to `.env` and fill in `FASTMAIL_TOKEN`,
-   `ANTHROPIC_API_KEY`, `APP_PASSWORD_HASH`, and `SESSION_SECRET`.
+   `ANTHROPIC_API_KEY`, `APP_PASSWORD_HASH`, and `SESSION_SECRET` (a random
+   string, e.g. `openssl rand -hex 32`).
 
 4. **Run:**
 
@@ -50,12 +55,68 @@ over time. The name comes from *winnowing*: separating the grain from the chaff.
    ```
 
    The first run seeds the preset categories and starts in **dry-run** mode
-   (nothing is moved). Open the dashboard, review how Winnow *would* classify
-   your mail, then turn off dry-run in **Settings** when you're happy.
+   (nothing is moved). Open the dashboard at `http://localhost:8080`, review how
+   Winnow *would* classify your mail, then turn off dry-run in **Settings** when
+   you're happy.
 
 5. **(Optional) expose the dashboard publicly** via the Cloudflare Tunnel +
-   Access setup described in [docs](docs/) — otherwise it's reachable over your
-   Tailnet only.
+   Access setup described below — otherwise it's reachable over your Tailnet
+   only.
+
+## Deploy to a remote server
+
+`deploy.sh` syncs the source over SSH and builds + starts the container
+remotely. Your server needs only Docker; Go is not needed there either.
+
+1. Copy `.env.deploy.example` to `.env.deploy` (gitignored) and fill in your
+   server details:
+
+   ```sh
+   cp .env.deploy.example .env.deploy
+   # edit: DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH
+   ```
+
+2. Make sure your `.env` with real secrets exists at `DEPLOY_PATH/.env` on the
+   server (copy it there once out-of-band — it is never synced by `deploy.sh`).
+
+3. Run the deploy:
+
+   ```sh
+   bash deploy.sh
+   ```
+
+   This rsyncs the source (excluding secrets and local state), then runs
+   `docker compose up -d --build` on the server.
+
+## Cloudflare Tunnel + Access (optional)
+
+This exposes the dashboard at a public hostname while keeping auth enforced at
+Cloudflare's edge. The tunnel runs as a **separate container** alongside the app.
+
+1. Create a tunnel in the [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com),
+   point it at `http://winnow:8080`, and copy the tunnel token.
+
+2. Add to your `.env`:
+
+   ```env
+   TUNNEL_TOKEN=<your-cloudflare-tunnel-token>
+   CF_ACCESS_TEAM_DOMAIN=<yourteam>.cloudflareaccess.com
+   CF_ACCESS_AUD=<your-cloudflare-access-audience-tag>
+   ```
+
+3. Start with the tunnel profile:
+
+   ```sh
+   docker compose --profile tunnel up -d
+   ```
+
+4. In the Cloudflare Zero Trust dashboard, add an **Access Application** for
+   your hostname and configure the identity provider (email OTP, Google SSO,
+   etc.). Winnow will verify the `Cf-Access-Jwt-Assertion` header on every
+   request — unauthenticated requests are rejected at both layers.
+
+> Without these env vars set, `CF_ACCESS_*` verification is skipped — the tunnel
+> container simply won't start if `TUNNEL_TOKEN` is absent.
 
 ## Privacy
 
