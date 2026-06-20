@@ -67,6 +67,16 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 	if v := r.FormValue("privacy_mode"); v == string(config.PrivacySnippet) || v == string(config.PrivacySubjectSender) {
 		st.Privacy = config.PrivacyMode(v)
 	}
+	if v := r.FormValue("decision_retention_days"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			st.DecisionRetentionDays = n
+		}
+	}
+	if v := r.FormValue("unsub_verify_window_days"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 {
+			st.UnsubVerifyWindowDays = n
+		}
+	}
 
 	s.saveSettings(st)
 	redirect(w, r, "/settings", "Settings saved.")
@@ -84,6 +94,8 @@ func (s *Server) saveSettings(st config.Settings) {
 	put("llm_daily_cap", strconv.Itoa(st.LLMDailyCap))
 	put("model", st.Model)
 	put("privacy_mode", string(st.Privacy))
+	put("decision_retention_days", strconv.Itoa(st.DecisionRetentionDays))
+	put("unsub_verify_window_days", strconv.Itoa(st.UnsubVerifyWindowDays))
 }
 
 func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {

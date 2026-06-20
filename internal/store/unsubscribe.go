@@ -1,5 +1,7 @@
 package store
 
+import "time"
+
 // Unsubscribe statuses.
 const (
 	UnsubNeedsDecision = "needs_decision"
@@ -103,4 +105,32 @@ func (s *Store) SetUnsubscribeStatus(sender, status string, acted bool) error {
 func (s *Store) SetUnsubscribeVerified(sender string, verified bool) error {
 	_, err := s.db.Exec("UPDATE unsubscribe SET verified = ? WHERE sender = ?", boolToInt(verified), sender)
 	return err
+}
+
+// TouchUnsubscribeLastSeen bumps last_seen for a sender that is already in the
+// 'unsubscribed' state. Called during triage so the verification loop knows
+// mail is still arriving even if the new message lacks a List-Unsubscribe header.
+func (s *Store) TouchUnsubscribeLastSeen(sender string) error {
+	_, err := s.db.Exec(
+		"UPDATE unsubscribe SET last_seen = ? WHERE sender = ? AND status = 'unsubscribed'",
+		s.nowStr(), sender)
+	return err
+}
+
+// MarkVerifiedUnsubscribes finds unsubscribed-but-unverified senders whose
+// verification window has elapsed and marks those with no mail since acted_at
+// as verified. Returns the count of newly-verified senders.
+func (s *Store) MarkVerifiedUnsubscribes(windowDays int) (int, error) {
+	cutoff := s.now().UTC().AddDate(0, 0, -windowDays).Format(time.RFC3339Nano)
+	res, err := s.db.Exec(`
+		UPDATE unsubscribe SET verified = 1
+		WHERE status = 'unsubscribed' AND verified = 0
+		  AND acted_at != '' AND acted_at <= ?
+		  AND last_seen <= acted_at`,
+		cutoff)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
 }

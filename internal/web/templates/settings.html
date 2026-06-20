@@ -10,6 +10,8 @@
       <label>Timezone <input type="text" name="timezone" value="{{$s.Timezone}}"></label>
       <label>Confidence threshold <input type="text" name="confidence_threshold" value="{{$s.ConfidenceThreshold}}"></label>
       <label>Daily LLM-call cap <input type="number" name="llm_daily_cap" min="0" value="{{$s.LLMDailyCap}}"></label>
+      <label>Decision log retention (days, 0 = keep forever) <input type="number" name="decision_retention_days" min="0" value="{{$s.DecisionRetentionDays}}"></label>
+      <label>Unsubscribe verify window (days) <input type="number" name="unsub_verify_window_days" min="1" value="{{$s.UnsubVerifyWindowDays}}"></label>
       <label>Model
         <select name="model">{{range .Models}}<option value="{{.}}" {{if eq . $s.Model}}selected{{end}}>{{.}}</option>{{end}}</select>
       </label>

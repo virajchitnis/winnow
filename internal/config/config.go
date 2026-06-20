@@ -57,6 +57,8 @@ type Settings struct {
 	LLMDailyCap         int
 	Model               string
 	Privacy             PrivacyMode
+	DecisionRetentionDays int // decisions older than this are pruned (0 = keep forever)
+	UnsubVerifyWindowDays int // days to wait before confirming an unsubscribe succeeded
 }
 
 // minPollInterval is the floor enforced on the poll interval to stay friendly to
@@ -82,11 +84,13 @@ func Load() (*Config, error) {
 		Timezone:            envOr("TZ", "UTC"),
 		DigestHour:          envInt("DIGEST_HOUR", 7),
 		DigestEnabled:       envBool("DIGEST_ENABLED", true),
-		PollInterval:        envDuration("POLL_INTERVAL", 15*time.Minute),
-		ConfidenceThreshold: envFloat("CONFIDENCE_THRESHOLD", 0.75),
-		LLMDailyCap:         envInt("LLM_DAILY_CAP", 2000),
-		Model:               envOr("ANTHROPIC_MODEL", "claude-haiku-4-5"),
-		Privacy:             PrivacyMode(envOr("PRIVACY_MODE", string(PrivacySnippet))),
+		PollInterval:          envDuration("POLL_INTERVAL", 15*time.Minute),
+		ConfidenceThreshold:   envFloat("CONFIDENCE_THRESHOLD", 0.75),
+		LLMDailyCap:           envInt("LLM_DAILY_CAP", 2000),
+		Model:                 envOr("ANTHROPIC_MODEL", "claude-haiku-4-5"),
+		Privacy:               PrivacyMode(envOr("PRIVACY_MODE", string(PrivacySnippet))),
+		DecisionRetentionDays: envInt("DECISION_RETENTION_DAYS", 90),
+		UnsubVerifyWindowDays: envInt("UNSUB_VERIFY_WINDOW_DAYS", 14),
 	}
 
 	if err := c.validate(); err != nil {

@@ -224,6 +224,12 @@ func (s *Scheduler) record(e jmap.Email, r classify.Result, outcomes []actions.R
 			_ = s.store.ObserveUnsubscribe(sender, method, target)
 		}
 	}
+
+	// If this sender was already unsubscribed, bump last_seen so the
+	// verification loop knows mail is still arriving from them.
+	if sender != "" {
+		_ = s.store.TouchUnsubscribeLastSeen(sender)
+	}
 }
 
 func (s *Scheduler) noteSpendCap() {

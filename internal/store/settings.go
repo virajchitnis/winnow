@@ -11,17 +11,19 @@ import (
 
 // Setting keys persisted in the settings table.
 const (
-	keyDryRun        = "dry_run"
-	keyTimezone      = "timezone"
-	keyDigestHour    = "digest_hour"
-	keyDigestEnabled = "digest_enabled"
-	keyPollInterval  = "poll_interval"
-	keyConfidence    = "confidence_threshold"
-	keyLLMDailyCap   = "llm_daily_cap"
-	keyModel         = "model"
-	keyPrivacy       = "privacy_mode"
-	keyEmailState    = "email_state"     // JMAP Email/changes state token
-	keyHighWaterRecv = "high_water_recv" // newest receivedAt processed
+	keyDryRun          = "dry_run"
+	keyTimezone        = "timezone"
+	keyDigestHour      = "digest_hour"
+	keyDigestEnabled   = "digest_enabled"
+	keyPollInterval    = "poll_interval"
+	keyConfidence      = "confidence_threshold"
+	keyLLMDailyCap     = "llm_daily_cap"
+	keyModel           = "model"
+	keyPrivacy         = "privacy_mode"
+	keyRetentionDays   = "decision_retention_days"
+	keyUnsubVerifyDays = "unsub_verify_window_days"
+	keyEmailState      = "email_state"     // JMAP Email/changes state token
+	keyHighWaterRecv   = "high_water_recv" // newest receivedAt processed
 )
 
 // GetSetting returns a raw setting value and whether it exists.
@@ -50,15 +52,17 @@ func (s *Store) SetSetting(key, value string) error {
 // Called once on first boot with the env-derived defaults.
 func (s *Store) SeedSettings(d config.Settings) error {
 	seed := map[string]string{
-		keyDryRun:        boolStr(d.DryRun),
-		keyTimezone:      d.Timezone,
-		keyDigestHour:    strconv.Itoa(d.DigestHour),
-		keyDigestEnabled: boolStr(d.DigestEnabled),
-		keyPollInterval:  d.PollInterval.String(),
-		keyConfidence:    strconv.FormatFloat(d.ConfidenceThreshold, 'f', -1, 64),
-		keyLLMDailyCap:   strconv.Itoa(d.LLMDailyCap),
-		keyModel:         d.Model,
-		keyPrivacy:       string(d.Privacy),
+		keyDryRun:          boolStr(d.DryRun),
+		keyTimezone:        d.Timezone,
+		keyDigestHour:      strconv.Itoa(d.DigestHour),
+		keyDigestEnabled:   boolStr(d.DigestEnabled),
+		keyPollInterval:    d.PollInterval.String(),
+		keyConfidence:      strconv.FormatFloat(d.ConfidenceThreshold, 'f', -1, 64),
+		keyLLMDailyCap:     strconv.Itoa(d.LLMDailyCap),
+		keyModel:           d.Model,
+		keyPrivacy:         string(d.Privacy),
+		keyRetentionDays:   strconv.Itoa(d.DecisionRetentionDays),
+		keyUnsubVerifyDays: strconv.Itoa(d.UnsubVerifyWindowDays),
 	}
 	for k, v := range seed {
 		if _, ok, err := s.GetSetting(k); err != nil {
@@ -125,6 +129,14 @@ func applySetting(s *config.Settings, k, v string) {
 	case keyPrivacy:
 		if v != "" {
 			s.Privacy = config.PrivacyMode(v)
+		}
+	case keyRetentionDays:
+		if n, err := strconv.Atoi(v); err == nil {
+			s.DecisionRetentionDays = n
+		}
+	case keyUnsubVerifyDays:
+		if n, err := strconv.Atoi(v); err == nil {
+			s.UnsubVerifyWindowDays = n
 		}
 	}
 }

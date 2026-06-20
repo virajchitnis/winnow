@@ -164,12 +164,32 @@ func (s *Scheduler) TriageOnce(ctx context.Context) {
 
 func (s *Scheduler) maybeSendDigest(ctx context.Context) {
 	settings, _ := s.store.LoadSettings(s.defaults)
-	if !settings.DigestEnabled || s.digester == nil {
-		return
+	if settings.DigestEnabled && s.digester != nil {
+		if err := s.digester.Send(ctx); err != nil {
+			s.log.Error("digest failed", "err", err)
+			_ = s.store.RecordError("digest", err.Error())
+		}
 	}
-	if err := s.digester.Send(ctx); err != nil {
-		s.log.Error("digest failed", "err", err)
-		_ = s.store.RecordError("digest", err.Error())
+	s.runDailyMaintenance(settings)
+}
+
+// runDailyMaintenance performs housekeeping tasks that run once a day alongside
+// the digest: pruning old decisions and verifying completed unsubscribes.
+func (s *Scheduler) runDailyMaintenance(settings config.Settings) {
+	if settings.DecisionRetentionDays > 0 {
+		cutoff := s.now().UTC().AddDate(0, 0, -settings.DecisionRetentionDays).Format(time.RFC3339Nano)
+		if n, err := s.store.PruneDecisions(cutoff); err != nil {
+			s.log.Error("prune decisions", "err", err)
+		} else if n > 0 {
+			s.log.Info("pruned old decisions", "count", n)
+		}
+	}
+	if settings.UnsubVerifyWindowDays > 0 {
+		if n, err := s.store.MarkVerifiedUnsubscribes(settings.UnsubVerifyWindowDays); err != nil {
+			s.log.Error("verify unsubscribes", "err", err)
+		} else if n > 0 {
+			s.log.Info("marked unsubscribes verified", "count", n)
+		}
 	}
 }
 
