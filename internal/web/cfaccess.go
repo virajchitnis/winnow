@@ -25,6 +25,7 @@ type cfVerifier interface {
 type CloudflareAccess struct {
 	teamDomain string // e.g. myteam.cloudflareaccess.com
 	audience   string
+	certsURL   string
 	httpClient *http.Client
 
 	mu        sync.Mutex
@@ -37,6 +38,7 @@ func NewCloudflareAccess(teamDomain, audience string) *CloudflareAccess {
 	return &CloudflareAccess{
 		teamDomain: teamDomain,
 		audience:   audience,
+		certsURL:   "https://" + teamDomain + "/cdn-cgi/access/certs",
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 		keys:       map[string]*rsa.PublicKey{},
 	}
@@ -94,8 +96,7 @@ func (c *CloudflareAccess) keyByID(ctx context.Context, kid string) (*rsa.Public
 }
 
 func (c *CloudflareAccess) refresh(ctx context.Context) error {
-	url := "https://" + c.teamDomain + "/cdn-cgi/access/certs"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.certsURL, nil)
 	if err != nil {
 		return err
 	}

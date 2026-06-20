@@ -1,6 +1,9 @@
 GO ?= go
 COVER_MIN ?= 80
 PKGS := ./...
+# Coverage is measured over the testable library packages; the cmd/ wiring is
+# exercised end to end via Docker/e2e, not unit coverage.
+COVERPKGS := ./internal/...
 
 .PHONY: all build test race cover fmt fmtcheck vet tidy docker clean
 
@@ -17,7 +20,7 @@ race:
 
 # Run tests with coverage and fail if total coverage is below COVER_MIN.
 cover:
-	$(GO) test -coverprofile=coverage.out $(PKGS)
+	$(GO) test -coverprofile=coverage.out $(COVERPKGS)
 	@total=$$($(GO) tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$$3); print $$3}'); \
 	echo "total coverage: $$total% (min $(COVER_MIN)%)"; \
 	awk "BEGIN { exit !($$total >= $(COVER_MIN)) }" || { echo "coverage below $(COVER_MIN)%"; exit 1; }
