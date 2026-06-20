@@ -11,17 +11,17 @@ import (
 
 // Setting keys persisted in the settings table.
 const (
-	keyDryRun         = "dry_run"
-	keyTimezone       = "timezone"
-	keyDigestHour     = "digest_hour"
-	keyDigestEnabled  = "digest_enabled"
-	keyPollInterval   = "poll_interval"
-	keyConfidence     = "confidence_threshold"
-	keyLLMDailyCap    = "llm_daily_cap"
-	keyModel          = "model"
-	keyPrivacy        = "privacy_mode"
-	keyEmailState     = "email_state"     // JMAP Email/changes state token
-	keyHighWaterRecv  = "high_water_recv" // newest receivedAt processed
+	keyDryRun        = "dry_run"
+	keyTimezone      = "timezone"
+	keyDigestHour    = "digest_hour"
+	keyDigestEnabled = "digest_enabled"
+	keyPollInterval  = "poll_interval"
+	keyConfidence    = "confidence_threshold"
+	keyLLMDailyCap   = "llm_daily_cap"
+	keyModel         = "model"
+	keyPrivacy       = "privacy_mode"
+	keyEmailState    = "email_state"     // JMAP Email/changes state token
+	keyHighWaterRecv = "high_water_recv" // newest receivedAt processed
 )
 
 // GetSetting returns a raw setting value and whether it exists.

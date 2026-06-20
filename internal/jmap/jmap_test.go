@@ -168,10 +168,10 @@ func TestGetEmailsParsesHeaders(t *testing.T) {
 		return "Email/get", map[string]any{
 			"accountId": "acc1", "state": "1",
 			"list": []map[string]any{{
-				"id":      "e1",
-				"from":    []map[string]any{{"name": "Deals", "email": "Deals@Retailer.com"}},
-				"subject": "40% off",
-				"preview": "limited time",
+				"id":                                  "e1",
+				"from":                                []map[string]any{{"name": "Deals", "email": "Deals@Retailer.com"}},
+				"subject":                             "40% off",
+				"preview":                             "limited time",
 				"header:List-Unsubscribe:asText":      "<mailto:unsub@retailer.com>",
 				"header:List-Unsubscribe-Post:asText": "List-Unsubscribe=One-Click",
 			}},

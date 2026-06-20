@@ -50,9 +50,9 @@ var testCats = []CategoryInfo{
 
 func TestExtractJSONArray(t *testing.T) {
 	cases := map[string]string{
-		`[{"i":0}]`:                 `[{"i":0}]`,
+		`[{"i":0}]`:                  `[{"i":0}]`,
 		"prose [{\"i\":0}] trailing": `[{"i":0}]`,
-		"no array here":             "",
+		"no array here":              "",
 	}
 	for in, want := range cases {
 		if got := extractJSONArray(in); got != want {
