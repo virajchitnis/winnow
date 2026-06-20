@@ -1,0 +1,40 @@
+{{define "content"}}
+<h1>Review</h1>
+{{with .Data}}
+<div class="stats">
+  <div class="stat"><div class="n">{{len .Decisions}}</div><div class="l">recent decisions</div></div>
+  <div class="stat"><div class="n">{{.LLMToday}}</div><div class="l">LLM calls today</div></div>
+</div>
+<div class="row" style="margin:.4rem 0">
+  <form class="inline" method="post" action="/action/run"><button>Run triage now</button></form>
+  <form class="inline" method="post" action="/action/sweep"><button name="apply" value="">Sweep inbox (preview)</button></form>
+  <form class="inline" method="post" action="/action/sweep"><input type="hidden" name="apply" value="on"><button>Sweep inbox (apply)</button></form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Sender / Subject</th><th>Category</th><th>Conf.</th><th>Action</th><th>Re-file as</th></tr>
+    {{range .Decisions}}
+    <tr>
+      <td class="grow"><div class="ell">{{.Subject}}</div><div class="ell muted" style="font-size:.82rem">{{.Sender}}</div></td>
+      <td><span class="pill">{{.Category}}</span>{{if .LowConfidence}} <span class="badge warn">low</span>{{end}}</td>
+      <td>{{pct .Confidence}}%</td>
+      <td class="muted">{{.Action}}</td>
+      <td>
+        <form class="inline" method="post" action="/action/correct">
+          <input type="hidden" name="email_id" value="{{.EmailID}}">
+          <input type="hidden" name="sender" value="{{.Sender}}">
+          <select name="category">
+            {{range $.Data.Categories}}<option value="{{.Name}}">{{.Name}}</option>{{end}}
+          </select>
+          <button>Fix</button>
+        </form>
+      </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="5" class="muted">No decisions yet. Winnow records them as it triages new mail.</td></tr>
+    {{end}}
+  </table>
+</div>
+{{end}}
+{{end}}

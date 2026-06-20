@@ -1,0 +1,50 @@
+{{define "content"}}
+<h1>Settings</h1>
+{{with .Data}}{{$s := .Settings}}
+<div class="card">
+  <h2>Operational</h2>
+  <form method="post" action="/action/settings">
+    <div class="stats">
+      <label>Poll interval <input type="text" name="poll_interval" value="{{$s.PollInterval}}"></label>
+      <label>Digest hour (0–23) <input type="number" name="digest_hour" min="0" max="23" value="{{$s.DigestHour}}"></label>
+      <label>Timezone <input type="text" name="timezone" value="{{$s.Timezone}}"></label>
+      <label>Confidence threshold <input type="text" name="confidence_threshold" value="{{$s.ConfidenceThreshold}}"></label>
+      <label>Daily LLM-call cap <input type="number" name="llm_daily_cap" min="0" value="{{$s.LLMDailyCap}}"></label>
+      <label>Model
+        <select name="model">{{range .Models}}<option value="{{.}}" {{if eq . $s.Model}}selected{{end}}>{{.}}</option>{{end}}</select>
+      </label>
+      <label>Privacy mode
+        <select name="privacy_mode">
+          <option value="snippet" {{if eq (printf "%s" $s.Privacy) "snippet"}}selected{{end}}>subject + sender + snippet</option>
+          <option value="subject_sender" {{if eq (printf "%s" $s.Privacy) "subject_sender"}}selected{{end}}>subject + sender only</option>
+        </select>
+      </label>
+    </div>
+    <p>
+      <label class="muted"><input type="checkbox" name="dry_run" {{if $s.DryRun}}checked{{end}}> dry-run (don't move mail)</label>
+      &nbsp;&nbsp;
+      <label class="muted"><input type="checkbox" name="digest_enabled" {{if $s.DigestEnabled}}checked{{end}}> daily digest</label>
+    </p>
+    <button class="primary">Save settings</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Diagnostics</h2>
+  <div class="row">
+    <form class="inline" method="post" action="/action/test"><button name="service" value="fastmail">Test Fastmail</button></form>
+    <form class="inline" method="post" action="/action/test"><button name="service" value="anthropic">Test Anthropic</button></form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Change password</h2>
+  <form method="post" action="/action/password" class="row">
+    <input type="password" name="current" placeholder="Current password" required>
+    <input type="password" name="new" placeholder="New password (min 8)" required>
+    <button>Change</button>
+  </form>
+  <p class="muted" style="font-size:.84rem">API tokens and secrets are configured via the server environment and are never shown or editable here.</p>
+</div>
+{{end}}
+{{end}}

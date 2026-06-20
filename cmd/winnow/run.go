@@ -18,7 +18,10 @@ import (
 	"winnow/internal/digest"
 	"winnow/internal/jmap"
 	"winnow/internal/schedule"
+	"winnow/internal/sieve"
 	"winnow/internal/store"
+	"winnow/internal/unsubscribe"
+	"winnow/internal/web"
 )
 
 // app bundles the constructed dependencies.
@@ -27,6 +30,7 @@ type app struct {
 	store     *store.Store
 	jmap      *jmap.Client
 	scheduler *schedule.Scheduler
+	web       http.Handler
 	log       *slog.Logger
 }
 
@@ -64,7 +68,23 @@ func build() (*app, error) {
 		Logger:     logger,
 	})
 
-	return &app{cfg: cfg, store: st, jmap: jc, scheduler: sched, log: logger}, nil
+	sg := sieve.New(jc, st)
+	ux := unsubscribe.NewExecutor(jc)
+	dash, err := web.New(web.Deps{
+		Store:         st,
+		Scheduler:     sched,
+		Sieve:         sg,
+		Unsub:         ux,
+		JMAP:          jc,
+		FastmailPing:  jc,
+		AnthropicPing: classify.NewAnthropic(cfg.AnthropicAPIKey),
+		Config:        cfg,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("init dashboard: %w", err)
+	}
+
+	return &app{cfg: cfg, store: st, jmap: jc, scheduler: sched, web: dash.Handler(), log: logger}, nil
 }
 
 // runService runs the long-running service (scheduler + HTTP server) or, when
@@ -83,10 +103,7 @@ func runService(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// HTTP server. The full dashboard mounts here; for now it serves /healthz.
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", a.healthHandler)
-	srv := &http.Server{Addr: a.cfg.Listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Addr: a.cfg.Listen, Handler: a.web, ReadHeaderTimeout: 10 * time.Second}
 
 	go func() {
 		a.log.Info("http server listening", "addr", a.cfg.Listen)
@@ -139,17 +156,4 @@ func runSweep(args []string) error {
 	}
 	fmt.Printf("sweep %s: considered %d, processed %d\n", mode, res.Considered, res.Processed)
 	return nil
-}
-
-func (a *app) healthHandler(w http.ResponseWriter, _ *http.Request) {
-	h := a.scheduler.HealthSnapshot()
-	status := http.StatusOK
-	// Unhealthy if we've polled at least once and the last poll failed.
-	if !h.LastPollAt.IsZero() && !h.LastPollOK {
-		status = http.StatusServiceUnavailable
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	fmt.Fprintf(w, `{"last_poll_at":%q,"last_poll_ok":%t,"running":%t,"error":%q}`,
-		h.LastPollAt.Format(time.RFC3339), h.LastPollOK, h.Running, h.LastPollError)
 }

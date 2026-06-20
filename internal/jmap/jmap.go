@@ -140,6 +140,16 @@ func (c *Client) getSession(ctx context.Context) (*Session, error) {
 // Session returns the (cached) session resource.
 func (c *Client) Session(ctx context.Context) (*Session, error) { return c.getSession(ctx) }
 
+// Ping checks connectivity/auth by fetching the session resource (used by the
+// dashboard's test-connection button). It forces a fresh fetch.
+func (c *Client) Ping(ctx context.Context) error {
+	c.mu.Lock()
+	c.session = nil
+	c.mu.Unlock()
+	_, err := c.getSession(ctx)
+	return err
+}
+
 func (c *Client) authorize(req *http.Request) {
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Accept", "application/json")

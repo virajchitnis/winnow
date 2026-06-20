@@ -45,6 +45,13 @@ func NewAnthropic(apiKey string, opts ...AnthropicOption) *Anthropic {
 	return a
 }
 
+// Ping makes a minimal request to verify the API key works (used by the
+// dashboard's test-connection button).
+func (a *Anthropic) Ping(ctx context.Context) error {
+	_, _, err := a.Message(ctx, "claude-haiku-4-5", "Reply with OK.", "ping", 1)
+	return err
+}
+
 // Usage reports token accounting from a Messages response.
 type Usage struct {
 	InputTokens         int `json:"input_tokens"`

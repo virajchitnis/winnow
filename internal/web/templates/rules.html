@@ -1,0 +1,29 @@
+{{define "content"}}
+<h1>Fastmail rules</h1>
+<p class="muted">Approve recurring senders to be filed by Fastmail itself (server-side, free, always-on). Winnow only ever edits its own delimited block — your hand-made rules are never touched.</p>
+{{with .Data}}
+<div class="card">
+  <h2>Proposed</h2>
+  <table>
+    <tr><th>Domain</th><th>Category</th><th>Seen</th><th></th></tr>
+    {{range .Proposed}}
+    <tr>
+      <td>@{{.Domain}}</td><td><span class="pill">{{.Category}}</span></td><td>{{.Observations}}</td>
+      <td>
+        <form class="inline" method="post" action="/action/rule"><input type="hidden" name="domain" value="{{.Domain}}"><input type="hidden" name="category" value="{{.Category}}"><button name="status" value="approved">Approve</button></form>
+        <form class="inline" method="post" action="/action/rule"><input type="hidden" name="domain" value="{{.Domain}}"><input type="hidden" name="category" value="{{.Category}}"><button name="status" value="rejected">Reject</button></form>
+      </td>
+    </tr>
+    {{else}}<tr><td colspan="4" class="muted">No proposals yet.</td></tr>{{end}}
+  </table>
+</div>
+<div class="card">
+  <h2>Approved ({{len .Approved}})</h2>
+  <div class="row">
+    <form class="inline" method="post" action="/action/rules/apply"><button class="primary">Apply to Fastmail</button></form>
+    <form class="inline" method="post" action="/action/rules/revert"><button>Revert to previous script</button></form>
+  </div>
+  {{if .Preview}}<h2 style="margin-top:1rem">Managed block preview</h2><pre style="white-space:pre-wrap;font-size:.8rem;background:var(--bg);padding:.7rem;border-radius:8px">{{.Preview}}</pre>{{end}}
+</div>
+{{end}}
+{{end}}

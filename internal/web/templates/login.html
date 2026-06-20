@@ -1,0 +1,14 @@
+{{define "content"}}
+<div style="max-width:360px;margin:3rem auto">
+  <h1>🌾 Winnow</h1>
+  <div class="card">
+    <h2>Sign in</h2>
+    {{with .Data}}{{if .Error}}<div class="banner warn">{{.Error}}</div>{{end}}{{end}}
+    <form method="post" action="/login">
+      <p><input type="password" name="password" placeholder="Password" autofocus style="width:100%"></p>
+      <button class="primary" type="submit" style="width:100%">Sign in</button>
+    </form>
+  </div>
+  <p class="muted" style="font-size:.85rem">Reachable over your Tailnet, or via the Cloudflare Tunnel if configured.</p>
+</div>
+{{end}}

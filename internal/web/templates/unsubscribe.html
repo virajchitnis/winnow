@@ -1,0 +1,33 @@
+{{define "content"}}
+<h1>Unsubscribe</h1>
+<p class="muted">Filing and unsubscribing are independent. The default is to keep receiving + file. Approve an unsubscribe any time — Winnow uses only the safe methods (One-Click, mailto); bare links are shown for you to open manually.</p>
+{{with .Data}}
+<div class="row" style="margin:.4rem 0">
+  <a class="btn" href="/unsubscribe">All</a>
+  <a class="btn" href="/unsubscribe?status=needs_decision">Needs decision</a>
+  <a class="btn" href="/unsubscribe?status=kept">Kept</a>
+  <a class="btn" href="/unsubscribe?status=unsubscribed">Unsubscribed</a>
+</div>
+<div class="card">
+  <table>
+    <tr><th>Sender</th><th>Seen</th><th>Method</th><th>Status</th><th>Action</th></tr>
+    {{range .Records}}
+    <tr>
+      <td class="grow"><div class="ell">{{.Sender}}</div></td>
+      <td>{{.Count}}</td>
+      <td class="muted">{{.Method}}</td>
+      <td>{{.Status}}{{if and (eq .Status "unsubscribed") (not .Verified)}} <span class="badge warn">still arriving</span>{{end}}</td>
+      <td>
+        {{if eq .Method "http_manual"}}
+          <a class="btn" href="{{.Target}}" target="_blank" rel="noopener noreferrer">Open link</a>
+        {{else}}
+          <form class="inline" method="post" action="/action/unsub"><input type="hidden" name="sender" value="{{.Sender}}"><button name="choice" value="unsubscribe">Unsubscribe</button></form>
+        {{end}}
+        <form class="inline" method="post" action="/action/unsub"><input type="hidden" name="sender" value="{{.Sender}}"><button name="choice" value="keep">Keep</button></form>
+      </td>
+    </tr>
+    {{else}}<tr><td colspan="5" class="muted">No unsubscribe candidates yet.</td></tr>{{end}}
+  </table>
+</div>
+{{end}}
+{{end}}

@@ -1,0 +1,36 @@
+{{define "content"}}
+<h1>Categories</h1>
+<p class="muted">Each category maps to a destination folder and inbox/flag behavior. Built-in categories can be edited but not deleted.</p>
+{{with .Data}}
+<div class="card">
+  <table>
+    <tr><th>Name</th><th>Folder</th><th>Keep in inbox</th><th>Flag</th><th>Mark read</th><th></th></tr>
+    {{range .Categories}}
+    <tr>
+      <form class="inline" method="post" action="/action/category">
+      <input type="hidden" name="id" value="{{.ID}}">
+      <td><input type="text" name="name" value="{{.Name}}"></td>
+      <td><input type="text" name="destination_folder" value="{{.DestinationFolder}}" placeholder="(stays in inbox)"></td>
+      <td style="text-align:center"><input type="checkbox" name="keep_in_inbox" {{if .KeepInInbox}}checked{{end}}></td>
+      <td style="text-align:center"><input type="checkbox" name="flag" {{if .Flag}}checked{{end}}></td>
+      <td style="text-align:center"><input type="checkbox" name="mark_read" {{if .MarkRead}}checked{{end}}></td>
+      <td><button>Save</button></form>
+        {{if not .IsBuiltin}}<form class="inline" method="post" action="/action/category/delete"><input type="hidden" name="id" value="{{.ID}}"><button>Delete</button></form>{{end}}
+      </td>
+    </tr>
+    {{end}}
+  </table>
+</div>
+<div class="card">
+  <h2>Add a category</h2>
+  <form method="post" action="/action/category" class="row">
+    <input type="text" name="name" placeholder="Name" required>
+    <input type="text" name="destination_folder" placeholder="Destination folder">
+    <label class="muted"><input type="checkbox" name="keep_in_inbox"> keep in inbox</label>
+    <label class="muted"><input type="checkbox" name="flag"> flag</label>
+    <label class="muted"><input type="checkbox" name="mark_read"> mark read</label>
+    <button class="primary">Add</button>
+  </form>
+</div>
+{{end}}
+{{end}}
