@@ -48,15 +48,15 @@ type Config struct {
 // Settings are the live, dashboard-editable operational settings. The env seeds
 // them on first boot; afterwards the database is authoritative.
 type Settings struct {
-	DryRun              bool
-	Timezone            string
-	DigestHour          int
-	DigestEnabled       bool
-	PollInterval        time.Duration
-	ConfidenceThreshold float64
-	LLMDailyCap         int
-	Model               string
-	Privacy             PrivacyMode
+	DryRun                bool
+	Timezone              string
+	DigestHour            int
+	DigestEnabled         bool
+	PollInterval          time.Duration
+	ConfidenceThreshold   float64
+	LLMDailyCap           int
+	Model                 string
+	Privacy               PrivacyMode
 	DecisionRetentionDays int // decisions older than this are pruned (0 = keep forever)
 	UnsubVerifyWindowDays int // days to wait before confirming an unsubscribe succeeded
 }
@@ -80,10 +80,10 @@ func Load() (*Config, error) {
 	}
 
 	c.Defaults = Settings{
-		DryRun:              envBool("DRY_RUN", true),
-		Timezone:            envOr("TZ", "UTC"),
-		DigestHour:          envInt("DIGEST_HOUR", 7),
-		DigestEnabled:       envBool("DIGEST_ENABLED", true),
+		DryRun:                envBool("DRY_RUN", true),
+		Timezone:              envOr("TZ", "UTC"),
+		DigestHour:            envInt("DIGEST_HOUR", 7),
+		DigestEnabled:         envBool("DIGEST_ENABLED", true),
 		PollInterval:          envDuration("POLL_INTERVAL", 15*time.Minute),
 		ConfidenceThreshold:   envFloat("CONFIDENCE_THRESHOLD", 0.75),
 		LLMDailyCap:           envInt("LLM_DAILY_CAP", 2000),

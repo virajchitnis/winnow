@@ -100,10 +100,10 @@ func TestTouchUnsubLastSeenDuringTriage(t *testing.T) {
 	fj.changes = &jmap.Changes{NewState: "s1", Created: []string{"e99"}}
 	fj.emails = map[string]jmap.Email{
 		"e99": {
-			ID:        "e99",
+			ID:         "e99",
 			MailboxIDs: map[string]bool{"mb-inbox": true},
-			From: []jmap.EmailAddress{{Email: "pesky@spam.com"}},
-			Subject: "Still here!",
+			From:       []jmap.EmailAddress{{Email: "pesky@spam.com"}},
+			Subject:    "Still here!",
 		},
 	}
 	fj.inbox = jmap.Mailbox{ID: "mb-inbox", Role: "inbox"}
