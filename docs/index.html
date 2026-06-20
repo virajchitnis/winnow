@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winnow — AI email assistant for Fastmail</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1c1c1a; --muted:#5f5e5a; --bg:#f4f1ea; --card:#fff; --accent:#0f6e56; --border:rgba(0,0,0,.12); }
+  @media (prefers-color-scheme: dark){ :root{ --fg:#ece9e2; --muted:#a8a59d; --bg:#16150f; --card:#1f1e17; --accent:#5dcaa5; --border:rgba(255,255,255,.14);} }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--fg); background:var(--bg); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+  h1 { font-size: 2rem; margin:.2rem 0 .2rem; }
+  .tag { color: var(--muted); font-size: 1.05rem; margin:0 0 2rem; }
+  h2 { font-size: 1.2rem; margin: 2.2rem 0 .6rem; }
+  a { color: var(--accent); }
+  ul { padding-left: 1.2rem; }
+  li { margin:.3rem 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1rem 1.25rem; margin:1rem 0; }
+  code { background:rgba(127,127,127,.15); padding:.1em .4em; border-radius:5px; font-size:.92em; }
+  pre { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1rem; overflow:auto; }
+  .dl a { display:inline-block; margin:.25rem .5rem .25rem 0; }
+  footer { color:var(--muted); font-size:.9rem; margin-top:3rem; border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Winnow</h1>
+  <p class="tag">A self-hosted AI assistant that triages your Fastmail inbox — files the noise, surfaces what matters. Separating the grain from the chaff.</p>
+
+  <h2>What it does</h2>
+  <ul>
+    <li>Connects to Fastmail over <strong>JMAP</strong> (no fragile IMAP).</li>
+    <li><strong>Cheap-first classification</strong>: free header heuristics catch the obvious bulk; only ambiguous mail reaches Claude.</li>
+    <li>Sorts into editable <strong>categories → folders</strong>; flags important mail; never deletes.</li>
+    <li><strong>Safety bias</strong>: low-confidence mail stays in the inbox, so nothing important is hidden.</li>
+    <li>Graduates recurring senders into your own <strong>Fastmail Sieve rules</strong> (with approval) — server-side, free, always-on.</li>
+    <li><strong>Assisted unsubscribe</strong> (opt-in) and a once-a-day <strong>digest</strong>.</li>
+    <li>A clean, mobile-friendly <strong>dashboard</strong> over Tailscale or a Cloudflare Tunnel.</li>
+  </ul>
+
+  <h2>Quickstart</h2>
+  <div class="card">
+    <pre>docker run --rm ghcr.io/OWNER/winnow hashpw   # generate APP_PASSWORD_HASH
+cp .env.example .env                          # fill in tokens
+docker compose up -d                          # starts in safe dry-run mode</pre>
+    First run seeds the preset categories and previews classifications without
+    moving anything. Turn off dry-run in Settings when you're happy.
+  </div>
+
+  <h2>Privacy</h2>
+  <p>Your Fastmail token and mail storage stay on your server. For ambiguous mail
+  only, Winnow sends the subject, sender, and a short snippet (never full bodies)
+  to Anthropic to classify — and you can tighten that to subject+sender-only.</p>
+
+  <h2>Downloads</h2>
+  <div class="card dl">
+    <p>Latest release: <strong>{{LATEST_TAG}}</strong></p>
+    <a href="{{RELEASE_BASE}}/winnow_{{LATEST_TAG}}_linux_amd64.tar.gz">linux / amd64</a>
+    <a href="{{RELEASE_BASE}}/winnow_{{LATEST_TAG}}_linux_arm64.tar.gz">linux / arm64</a>
+    <a href="{{RELEASE_BASE}}/winnow_{{LATEST_TAG}}_darwin_arm64.tar.gz">macOS / arm64</a>
+    <p>Or pull the container: <code>ghcr.io/OWNER/winnow:latest</code></p>
+  </div>
+
+  <footer>
+    Open source under the MIT license. Screenshots and examples use synthetic data.
+  </footer>
+</div>
+</body>
+</html>

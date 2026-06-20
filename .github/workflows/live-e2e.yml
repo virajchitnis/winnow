@@ -1,0 +1,33 @@
+name: live-e2e
+
+# Live smoke test against a DEDICATED test Fastmail account. Not part of the
+# merge gate: it needs real secrets and touches a real mailbox, so it can't run
+# on fork PRs. Run it manually before a release, or on a schedule.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    # Secrets must be configured in repo settings:
+    #   FASTMAIL_TEST_TOKEN, ANTHROPIC_TEST_KEY
+    env:
+      FASTMAIL_TEST_TOKEN: ${{ secrets.FASTMAIL_TEST_TOKEN }}
+      ANTHROPIC_TEST_KEY: ${{ secrets.ANTHROPIC_TEST_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+      - name: live smoke test
+        run: |
+          if [ -z "$FASTMAIL_TEST_TOKEN" ]; then
+            echo "FASTMAIL_TEST_TOKEN not set; skipping live e2e"; exit 0
+          fi
+          go test -tags live ./... -run Live -v

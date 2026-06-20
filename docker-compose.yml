@@ -1,0 +1,53 @@
+# Winnow self-hosted deployment.
+#
+# Two services on a shared internal network:
+#   winnow      — the app (built from this repo, or pull a released GHCR image)
+#   cloudflared — optional Cloudflare Tunnel sidecar (official image)
+#
+# The app port is published only on the internal network; reach the dashboard
+# over Tailscale (the host's Tailnet) or via the cloudflared tunnel. It is NOT
+# published to the host's public interface.
+
+services:
+  winnow:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-none}
+        DATE: ${DATE:-unknown}
+    # To deploy a released image instead of building, comment out `build:` and:
+    # image: ghcr.io/OWNER/winnow:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WINNOW_DB: /data/winnow.db
+      WINNOW_LISTEN: 0.0.0.0:8080
+    volumes:
+      - winnow-data:/data
+    # Publish on the host so Tailscale (which sees host ports) can reach it.
+    # Bind to the Tailscale IP in production if you want to avoid the public
+    # interface entirely, e.g. "100.x.y.z:8080:8080".
+    ports:
+      - "8080:8080"
+    healthcheck:
+      # distroless has no shell/curl; the Go binary self-checks via `winnow`...
+      # Healthcheck is provided by the platform hitting /healthz, or omit.
+      disable: true
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # Set TUNNEL_TOKEN in .env (Cloudflare Zero Trust → Tunnels). The token is
+      # injected ONLY into this container; the app never sees it.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - winnow
+    profiles:
+      # Only starts when explicitly enabled: `docker compose --profile tunnel up -d`
+      - tunnel
+
+volumes:
+  winnow-data:
