@@ -30,7 +30,7 @@ case "$DEPLOY_TRANSPORT" in
     echo ">> syncing source via rsync (excluding secrets and local state)"
     rsync -az --delete \
       --exclude '.git' \
-      --exclude '.env' --exclude '.env.deploy' \
+      --exclude '.env' --exclude '.env.deploy' --exclude 'winnow.env' \
       --exclude '*.db' --exclude 'data/' \
       --exclude 'cloudflared/' \
       ./ "${ssh_target}:${DEPLOY_PATH}/"

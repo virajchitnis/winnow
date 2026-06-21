@@ -19,7 +19,8 @@ services:
     # To deploy a released image instead of building, comment out `build:` and:
     # image: ghcr.io/OWNER/winnow:latest
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - winnow.env
     environment:
       WINNOW_DB: /data/winnow.db
       WINNOW_LISTEN: 0.0.0.0:8080

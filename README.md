@@ -44,9 +44,12 @@ over time. The name comes from *winnowing*: separating the grain from the chaff.
    # enter a password when prompted; copy the printed bcrypt hash
    ```
 
-3. **Configure** — copy `.env.example` to `.env` and fill in `FASTMAIL_TOKEN`,
+3. **Configure** — copy `.env.example` to `winnow.env` and fill in `FASTMAIL_TOKEN`,
    `ANTHROPIC_API_KEY`, `APP_PASSWORD_HASH`, and `SESSION_SECRET` (a random
    string, e.g. `openssl rand -hex 32`).
+
+   > The file must be named **`winnow.env`** (not `.env`) so Docker Compose
+   > doesn't try to interpolate the `$` signs in the bcrypt password hash.
 
 4. **Run:**
 
@@ -76,8 +79,8 @@ remotely. Your server needs only Docker; Go is not needed there either.
    # edit: DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH
    ```
 
-2. Make sure your `.env` with real secrets exists at `DEPLOY_PATH/.env` on the
-   server (copy it there once out-of-band — it is never synced by `deploy.sh`).
+2. Make sure your `winnow.env` with real secrets exists at `DEPLOY_PATH/winnow.env`
+   on the server (copy it there once out-of-band — it is never synced by `deploy.sh`).
 
 3. Run the deploy:
 

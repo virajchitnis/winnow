@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 !.env.deploy.example
+winnow.env
 
 # Cloudflare tunnel credentials/config
 cloudflared/
