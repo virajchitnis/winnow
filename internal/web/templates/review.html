@@ -13,12 +13,13 @@
 
 <div class="card">
   <table>
-    <tr><th>Sender / Subject</th><th>Category</th><th>Conf.</th><th>Action</th><th>Re-file as</th></tr>
+    <tr><th>Sender / Subject</th><th>Category</th><th>Conf.</th><th>Source</th><th>Action</th><th>Re-file as</th></tr>
     {{range .Decisions}}
     <tr>
       <td class="grow"><div class="ell">{{.Subject}}</div><div class="ell muted" style="font-size:.82rem">{{.Sender}}</div></td>
       <td><span class="pill">{{.Category}}</span>{{if .LowConfidence}} <span class="badge warn">low</span>{{end}}</td>
       <td>{{pct .Confidence}}%</td>
+      <td class="muted">{{if .UsedLLM}}Claude{{else}}heuristic{{end}}</td>
       <td class="muted">{{.Action}}</td>
       <td>
         <form class="inline" method="post" action="/action/correct">
@@ -32,7 +33,7 @@
       </td>
     </tr>
     {{else}}
-    <tr><td colspan="5" class="muted">No decisions yet. Winnow records them as it triages new mail.</td></tr>
+    <tr><td colspan="6" class="muted">No decisions yet. Winnow records them as it triages new mail.</td></tr>
     {{end}}
   </table>
 </div>
