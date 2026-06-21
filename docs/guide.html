@@ -171,8 +171,32 @@
   </div>
 
   <h2 id="dryrun">5. Dry-run: what to check before going live</h2>
-  <p>While dry-run is on, Winnow logs what it <em>would</em> do without touching your mail.
-  Before switching it off, satisfy these:</p>
+  <p>Dry-run governs <strong>only the automatic triage pipeline</strong> — the scheduled
+  classification of new mail (and the sweep <em>preview</em>). While it's on, that pipeline
+  logs what it <em>would</em> do without moving, flagging, or marking anything read.</p>
+
+  <div class="card warn">
+    <strong>Dry-run does NOT cover explicit actions you take yourself.</strong> These act for
+    real even while the dry-run badge is showing — by design, since you asked for them:
+    <ul>
+      <li><strong>Sweep inbox (apply)</strong> — moves the existing backlog into folders.</li>
+      <li><strong>Move &amp; teach</strong> (Review tab) — re-files that one email over JMAP.</li>
+      <li><strong>Approving &amp; applying Sieve rules</strong> (Rules tab) — writes the rule
+        to Fastmail. From then on <em>Fastmail</em> files matching mail server-side at
+        delivery, completely outside Winnow and its dry-run setting. To pause that, revert or
+        remove the managed rule.</li>
+      <li><strong>Unsubscribe</strong> (Unsubscribe / Senders tabs) — a One-Click POST or
+        <code>mailto:</code> is actually sent to the sender.</li>
+      <li><strong>Teach</strong> (Review tab) — records sender stats and allow/deny overrides.
+        It doesn't move mail, but the learning persists and shapes future triage.</li>
+      <li><strong>Daily digest</strong> — still emailed; it's controlled by the separate
+        "daily digest" toggle, not by dry-run.</li>
+    </ul>
+    In short: dry-run is a safety net for Winnow's <em>autonomous</em> filing, not a global
+    "do nothing" switch. Anything you click is a deliberate action and runs.
+  </div>
+
+  <p>Before switching dry-run off (handing the automatic pipeline the keys), satisfy these:</p>
   <ul>
     <li><strong>No false negatives.</strong> Scan for any genuinely important email assigned
       to a bulk category (Promotional/Newsletters). This is the one that matters. If you
@@ -241,7 +265,7 @@
     <tr><td>Unsubscribe verify window</td><td>Days to wait with no new mail before an unsubscribe is marked verified.</td></tr>
     <tr><td>Model</td><td>Classifier model (default Haiku; switch to a stronger model for tougher mail at higher cost).</td></tr>
     <tr><td>Privacy mode</td><td>subject + sender + snippet (default) or subject + sender only.</td></tr>
-    <tr><td>dry-run</td><td>Master preview switch for normal triage. (Sweep apply overrides it.)</td></tr>
+    <tr><td>dry-run</td><td>Preview switch for the <em>automatic</em> triage pipeline only. Explicit actions (Sweep apply, Move &amp; teach, Sieve apply, Unsubscribe) still run — see <a href="#dryrun">section 5</a>.</td></tr>
     <tr><td>daily digest</td><td>Enable/disable the digest email.</td></tr>
   </table>
   <p>API tokens and secrets are configured via the server environment and are never shown

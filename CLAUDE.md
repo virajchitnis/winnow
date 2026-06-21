@@ -37,6 +37,14 @@ self-hosted via Docker.
 
 - **Safety first.** Never delete mail. Below the confidence threshold, keep mail
   in the inbox unmoved. Dry-run and sweep *preview* must not mutate mail.
+- **Dry-run scope.** `DryRun` is honored in exactly one place — `actions.Apply`
+  (the automatic triage/sweep-preview pipeline). It does NOT gate explicit user
+  actions, which act regardless: sweep *apply*, `Refile` (Move & teach), Sieve
+  rule apply (writes to Fastmail; then Fastmail files server-side, fully outside
+  Winnow), unsubscribe execution, Teach corrections, and the daily digest (gated
+  by `DigestEnabled`). Keep it that way — anything the user clicks is deliberate.
+  If you add a new explicit action, don't gate it on dry-run; if you add to the
+  autonomous pipeline, it must honor dry-run.
 - **Preview is a true dry read.** Learning side-effects (sender stats, Sieve
   candidates, unsubscribe metadata) and the processed-mark fire only when an
   action actually sticks — i.e. live triage or sweep *apply*, never preview /
