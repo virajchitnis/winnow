@@ -19,8 +19,12 @@ services:
     # To deploy a released image instead of building, comment out `build:` and:
     # image: ghcr.io/OWNER/winnow:latest
     restart: unless-stopped
+    # format: raw disables Compose's interpolation of the env file's contents.
+    # Without it, Compose v2.24+ treats the $ signs in the bcrypt
+    # APP_PASSWORD_HASH as variable references and mangles the hash.
     env_file:
-      - winnow.env
+      - path: winnow.env
+        format: raw
     environment:
       WINNOW_DB: /data/winnow.db
       WINNOW_LISTEN: 0.0.0.0:8080
