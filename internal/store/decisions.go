@@ -51,6 +51,24 @@ func (s *Store) RecentDecisions(limit int) ([]Decision, error) {
 	return scanDecisions(rows)
 }
 
+// DecisionStats summarizes the whole decision log for the Review header.
+type DecisionStats struct {
+	Total         int
+	LowConfidence int
+	UsedLLM       int
+}
+
+// DecisionStats returns all-time totals across the decision log.
+func (s *Store) DecisionStats() (DecisionStats, error) {
+	var d DecisionStats
+	err := s.db.QueryRow(`
+		SELECT COUNT(*),
+			COALESCE(SUM(low_confidence), 0),
+			COALESCE(SUM(used_llm), 0)
+		FROM decisions`).Scan(&d.Total, &d.LowConfidence, &d.UsedLLM)
+	return d, err
+}
+
 // DecisionsPage returns decisions newest-first with limit/offset, for paging
 // through the full history in the Review tab.
 func (s *Store) DecisionsPage(limit, offset int) ([]Decision, error) {

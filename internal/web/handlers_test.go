@@ -106,6 +106,26 @@ func TestCorrectRecordsOverride(t *testing.T) {
 	}
 }
 
+func TestRefileTeachesAndMovesAndLogs(t *testing.T) {
+	s, st := testServer(t)
+	h := s.Handler()
+	cookie := login(t, h)
+
+	post(t, h, cookie, "/action/refile", url.Values{
+		"email_id": {"e9"}, "sender": {"x@promo.com"}, "subject": {"Sale"},
+		"category": {"Promotional"},
+	})
+	// Teaches like correct does (deny-bulk on the domain)...
+	if cat, _, ok := st.SenderOverride("x@promo.com", "promo.com"); !ok || cat != "Promotional" {
+		t.Errorf("refile did not teach: %q,%v", cat, ok)
+	}
+	// ...and records a decision reflecting the move.
+	decs, _ := st.RecentDecisions(10)
+	if len(decs) != 1 || decs[0].EmailID != "e9" || decs[0].Action != "moved" {
+		t.Errorf("refile decision not logged: %+v", decs)
+	}
+}
+
 func TestRuleDecisionAndUnsubKeep(t *testing.T) {
 	s, st := testServer(t)
 	h := s.Handler()

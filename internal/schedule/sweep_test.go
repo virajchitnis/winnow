@@ -110,6 +110,59 @@ func TestSweepApplyMovesAndMarks(t *testing.T) {
 	}
 }
 
+func TestRefileMovesAndMarks(t *testing.T) {
+	st, fj, defaults := sweepSetup(t)
+	s := newSched(t, st, fj, defaults, "")
+
+	action, err := s.Refile(context.Background(), "e1", "Promotional")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if action != "moved" {
+		t.Errorf("action = %q, want moved", action)
+	}
+	if len(fj.updated) != 1 || !fj.updated[0].MailboxIDs["mb-Promotions"] {
+		t.Errorf("refile should move e1 to Promotions: %+v", fj.updated)
+	}
+	if seen, _ := st.IsProcessed("e1"); !seen {
+		t.Error("refile should mark processed")
+	}
+}
+
+func TestRefileToKeepInInboxMovesBackAndFlags(t *testing.T) {
+	st, fj, defaults := sweepSetup(t)
+	fj.inbox = jmap.Mailbox{ID: "inbox", Role: "inbox", Name: "Inbox"}
+	s := newSched(t, st, fj, defaults, "")
+
+	// "Important" is a keep-in-inbox, flag category: refile returns it to the
+	// inbox and sets the flag.
+	action, err := s.Refile(context.Background(), "e1", "Important")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fj.updated) != 1 {
+		t.Fatalf("expected one update, got %+v", fj.updated)
+	}
+	if !fj.updated[0].MailboxIDs["mb-Inbox"] {
+		t.Errorf("should move back to inbox: %+v", fj.updated[0])
+	}
+	if !fj.updated[0].SetKeywords["$flagged"] {
+		t.Errorf("Important should flag: %+v", fj.updated[0])
+	}
+	_ = action
+}
+
+func TestRefileUnknownCategory(t *testing.T) {
+	st, fj, defaults := sweepSetup(t)
+	s := newSched(t, st, fj, defaults, "")
+	if _, err := s.Refile(context.Background(), "e1", "Nope"); err == nil {
+		t.Error("expected error for unknown category")
+	}
+	if len(fj.updated) != 0 {
+		t.Error("unknown category must not move mail")
+	}
+}
+
 func TestChangedSinceFallback(t *testing.T) {
 	st, fj, defaults := sweepSetup(t)
 	// Seed a state token so triage runs the changes path (not bootstrap), then

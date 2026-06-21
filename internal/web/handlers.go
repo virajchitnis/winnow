@@ -87,33 +87,30 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 
 	cats, _ := s.store.Categories()
 	today, _ := s.store.LLMCallsToday()
+	stats, _ := s.store.DecisionStats()
 	prevOffset := offset - pageSize
 	if prevOffset < 0 {
 		prevOffset = 0
 	}
 	s.render(w, r, "review", "Review", "review", map[string]any{
-		"Decisions":  rows,
-		"Categories": cats,
-		"LLMToday":   today,
-		"HasPrev":    offset > 0,
-		"HasMore":    hasMore,
-		"PrevOffset": prevOffset,
-		"NextOffset": offset + pageSize,
-		"RangeStart": offset + 1,
-		"RangeEnd":   offset + len(rows),
+		"Decisions":     rows,
+		"Categories":    cats,
+		"LLMToday":      today,
+		"Total":         stats.Total,
+		"LowConfidence": stats.LowConfidence,
+		"UsedLLM":       stats.UsedLLM,
+		"HasPrev":       offset > 0,
+		"HasMore":       hasMore,
+		"PrevOffset":    prevOffset,
+		"NextOffset":    offset + pageSize,
+		"RangeStart":    offset + 1,
+		"RangeEnd":      offset + len(rows),
 	})
 }
 
-func (s *Server) handleCorrect(w http.ResponseWriter, r *http.Request) {
-	emailID := r.FormValue("email_id")
-	sender := r.FormValue("sender")
-	category := r.FormValue("category")
-	if emailID == "" || category == "" {
-		redirect(w, r, "/", "Missing fields.")
-		return
-	}
-	// Record the correction as a sender observation so the classifier learns,
-	// and (for a bulk category) as a deny-bulk rule override.
+// teach records a correction as a sender observation so the classifier learns,
+// and (depending on the category) as an allow-important or deny-bulk override.
+func (s *Server) teach(sender, category string) {
 	domain := domainOf(sender)
 	_ = s.store.RecordObservation(sender, domain, category)
 	if cat, ok, _ := s.store.CategoryByName(category); ok {
@@ -125,7 +122,50 @@ func (s *Server) handleCorrect(w http.ResponseWriter, r *http.Request) {
 			_ = s.store.AddSenderRule("@"+domain, store.KindDenyBulk, category)
 		}
 	}
-	redirect(w, r, "/", "Recorded correction; Winnow will treat this sender as "+category+".")
+}
+
+// handleCorrect teaches Winnow about a sender without touching the email itself.
+func (s *Server) handleCorrect(w http.ResponseWriter, r *http.Request) {
+	emailID := r.FormValue("email_id")
+	sender := r.FormValue("sender")
+	category := r.FormValue("category")
+	if emailID == "" || category == "" {
+		redirect(w, r, "/", "Missing fields.")
+		return
+	}
+	s.teach(sender, category)
+	redirect(w, r, "/", "Learned: Winnow will treat this sender as "+category+" going forward.")
+}
+
+// handleRefile teaches Winnow AND moves this specific email into the chosen
+// category now (over JMAP, regardless of dry-run), recording the result.
+func (s *Server) handleRefile(w http.ResponseWriter, r *http.Request) {
+	emailID := r.FormValue("email_id")
+	sender := r.FormValue("sender")
+	subject := r.FormValue("subject")
+	category := r.FormValue("category")
+	if emailID == "" || category == "" {
+		redirect(w, r, "/", "Missing fields.")
+		return
+	}
+	s.teach(sender, category)
+
+	action := "moved"
+	if s.sched != nil {
+		a, err := s.sched.Refile(r.Context(), emailID, category)
+		if err != nil {
+			redirect(w, r, "/", "Re-file failed: "+err.Error())
+			return
+		}
+		action = a
+	}
+	// Reflect the manual action in the log; this supersedes any preview row for
+	// the email (RecordDecision clears a prior dry_run entry for the same id).
+	_ = s.store.RecordDecision(store.Decision{
+		EmailID: emailID, Sender: sender, Subject: subject, Category: category,
+		Confidence: 1, Reason: "manual re-file", Action: action,
+	})
+	redirect(w, r, "/", "Moved this email to "+category+" and learned the sender.")
 }
 
 // --- Categories tab -----------------------------------------------------------

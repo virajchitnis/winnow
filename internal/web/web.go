@@ -25,6 +25,7 @@ var templatesFS embed.FS
 type Scheduler interface {
 	TriageOnce(ctx context.Context)
 	Sweep(ctx context.Context, apply bool) (schedule.SweepResult, error)
+	Refile(ctx context.Context, emailID, category string) (string, error)
 	HealthSnapshot() schedule.Health
 }
 
@@ -105,6 +106,7 @@ func (s *Server) Handler() http.Handler {
 
 	// Authenticated actions (POST).
 	mux.HandleFunc("/action/correct", s.requireAuth(s.handleCorrect))
+	mux.HandleFunc("/action/refile", s.requireAuth(s.handleRefile))
 	mux.HandleFunc("/action/category", s.requireAuth(s.handleCategorySave))
 	mux.HandleFunc("/action/category/delete", s.requireAuth(s.handleCategoryDelete))
 	mux.HandleFunc("/action/sender", s.requireAuth(s.handleSenderSave))

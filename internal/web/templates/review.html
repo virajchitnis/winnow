@@ -2,7 +2,9 @@
 <h1>Review</h1>
 {{with .Data}}
 <div class="stats">
-  <div class="stat"><div class="n">{{len .Decisions}}</div><div class="l">decisions shown</div></div>
+  <div class="stat"><div class="n">{{.Total}}</div><div class="l">total decisions</div></div>
+  <div class="stat"><div class="n">{{.LowConfidence}}</div><div class="l">low-confidence (kept)</div></div>
+  <div class="stat"><div class="n">{{.UsedLLM}}</div><div class="l">classified by Claude</div></div>
   <div class="stat"><div class="n">{{.LLMToday}}</div><div class="l">LLM calls today</div></div>
 </div>
 <div class="row" style="margin:.4rem 0">
@@ -14,8 +16,8 @@
 <div class="card tablewrap">
   <table class="fixed">
     <colgroup>
-      <col style="width:12%"><col style="width:27%"><col style="width:12%"><col style="width:7%">
-      <col style="width:10%"><col style="width:10%"><col style="width:22%">
+      <col style="width:11%"><col style="width:24%"><col style="width:11%"><col style="width:7%">
+      <col style="width:9%"><col style="width:9%"><col style="width:29%">
     </colgroup>
     <tr><th>When</th><th>Sender / Subject</th><th>Category</th><th>Conf.</th><th>Source</th><th>Action</th><th>Re-file as</th></tr>
     {{range .Decisions}}
@@ -30,10 +32,12 @@
         <form class="inline" method="post" action="/action/correct">
           <input type="hidden" name="email_id" value="{{.EmailID}}">
           <input type="hidden" name="sender" value="{{.Sender}}">
+          <input type="hidden" name="subject" value="{{.Subject}}">
           <select name="category">
             {{range $.Data.Categories}}<option value="{{.Name}}">{{.Name}}</option>{{end}}
           </select>
-          <button>Fix</button>
+          <button formaction="/action/correct" title="Learn this sender for future mail; don't move this email">Teach</button>
+          <button formaction="/action/refile" class="primary" title="Move this email now and learn the sender">Move &amp; teach</button>
         </form>
       </td>
     </tr>

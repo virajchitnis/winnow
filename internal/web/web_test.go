@@ -16,12 +16,25 @@ import (
 )
 
 // fakeScheduler satisfies web.Scheduler.
-type fakeScheduler struct{ swept bool }
+type fakeScheduler struct {
+	swept     bool
+	refiled   bool
+	refileTo  string
+	refileErr error
+}
 
 func (f *fakeScheduler) TriageOnce(context.Context) {}
 func (f *fakeScheduler) Sweep(context.Context, bool) (schedule.SweepResult, error) {
 	f.swept = true
 	return schedule.SweepResult{}, nil
+}
+func (f *fakeScheduler) Refile(_ context.Context, _, category string) (string, error) {
+	if f.refileErr != nil {
+		return "", f.refileErr
+	}
+	f.refiled = true
+	f.refileTo = category
+	return "moved", nil
 }
 func (f *fakeScheduler) HealthSnapshot() schedule.Health { return schedule.Health{LastPollOK: true} }
 
@@ -178,6 +191,32 @@ func TestSweepActionTriggersScheduler(t *testing.T) {
 		t.Fatalf("sweep action should redirect, got %d", rr.Code)
 	}
 	_ = fs // sweep dispatched in a goroutine; redirect confirms the handler ran
+}
+
+func TestRefileErrorDoesNotLog(t *testing.T) {
+	st, err := store.Open(t.TempDir() + "/w3.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	_ = st.SeedCategories()
+	hash, _ := bcrypt.GenerateFromPassword([]byte("secret123"), bcrypt.MinCost)
+	fs := &fakeScheduler{refileErr: authError("busy")}
+	cfg := &config.Config{AppPasswordHash: string(hash), SessionSecret: "x", Defaults: config.Settings{PollInterval: 900000000000}}
+	s, err := New(Deps{Store: st, Scheduler: fs, Config: cfg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := s.Handler()
+	cookie := login(t, h)
+
+	post(t, h, cookie, "/action/refile", url.Values{
+		"email_id": {"e1"}, "sender": {"x@promo.com"}, "category": {"Promotional"},
+	})
+	// A failed move must not record a decision.
+	if decs, _ := st.RecentDecisions(10); len(decs) != 0 {
+		t.Errorf("failed refile should not log a decision: %+v", decs)
+	}
 }
 
 type rejectVerifier struct{}

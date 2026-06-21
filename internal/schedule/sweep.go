@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"winnow/internal/actions"
 	"winnow/internal/jmap"
 )
 
@@ -17,6 +18,51 @@ type SweepResult struct {
 	Considered int
 	Processed  int
 	Applied    bool
+}
+
+// Refile moves a single email into the given category right now, applying that
+// category's folder/flag/mark-read behavior over JMAP regardless of dry-run —
+// an explicit, per-email correction from the dashboard. It holds the run lock
+// so it can't race triage/sweep, marks the email processed, and returns the
+// resulting action label ("moved", "flagged", or "kept").
+func (s *Scheduler) Refile(ctx context.Context, emailID, category string) (string, error) {
+	select {
+	case s.runLock <- struct{}{}:
+		defer func() { <-s.runLock }()
+	default:
+		return "", fmt.Errorf("a run is already in progress")
+	}
+
+	cat, ok, err := s.store.CategoryByName(category)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("unknown category %q", category)
+	}
+
+	plan := actions.Plan{EmailID: emailID, Category: cat.Name}
+	if cat.Moves() {
+		plan.MoveTo = cat.DestinationFolder
+		plan.MarkRead = cat.MarkRead
+	} else if inbox, ok, ierr := s.mail.MailboxByRole(ctx, "inbox"); ierr == nil && ok {
+		// Keep-in-inbox category: ensure the mail is back in the inbox.
+		plan.MoveTo = inbox.Name
+	}
+	if cat.Flag {
+		plan.Flag = true
+	}
+
+	results, err := s.applier.Apply(ctx, []actions.Plan{plan}, false)
+	if err != nil {
+		return "", err
+	}
+	res := results[0]
+	if res.Action == actions.ActionError {
+		return "", fmt.Errorf("refile failed: %s", res.Err)
+	}
+	_ = s.store.MarkProcessed(emailID)
+	return string(res.Action), nil
 }
 
 // Sweep processes the existing inbox backlog in checkpointed chunks. When
