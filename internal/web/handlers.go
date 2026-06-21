@@ -185,20 +185,17 @@ func maxInt(a, b int) int {
 	return b
 }
 
-// teach records a correction as a sender observation so the classifier learns,
-// and (depending on the category) as an allow-important or deny-bulk override.
+// teach records a correction as a soft sender observation. It deliberately does
+// NOT create a blanket allow/deny rule: the classifier only auto-applies a
+// category once a sender/domain is consistently (>=80%) that category over
+// enough observations, so a sender that mixes categories keeps getting per-email
+// AI judgment. Hard "always treat this sender as X" pins are an explicit choice
+// in the Senders tab.
 func (s *Server) teach(sender, category string) {
-	domain := domainOf(sender)
-	_ = s.store.RecordObservation(sender, domain, category)
-	if cat, ok, _ := s.store.CategoryByName(category); ok {
-		if cat.KeepInInbox {
-			if sender != "" {
-				_ = s.store.AddSenderRule(sender, store.KindAllowImportant, "")
-			}
-		} else if domain != "" {
-			_ = s.store.AddSenderRule("@"+domain, store.KindDenyBulk, category)
-		}
+	if sender == "" {
+		return
 	}
+	_ = s.store.RecordObservation(sender, domainOf(sender), category)
 }
 
 // handleCorrect teaches Winnow about a sender without touching the email itself.
@@ -211,7 +208,7 @@ func (s *Server) handleCorrect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.teach(sender, category)
-	redirect(w, r, "/", "Learned: Winnow will treat this sender as "+category+" going forward.")
+	redirect(w, r, "/", "Noted as "+category+". Winnow leans this way as it sees more from this sender; for an always-on rule use the Senders tab.")
 }
 
 // handleRefile teaches Winnow AND moves this specific email into the chosen
@@ -242,7 +239,7 @@ func (s *Server) handleRefile(w http.ResponseWriter, r *http.Request) {
 		EmailID: emailID, Sender: sender, Subject: subject, Category: category,
 		Confidence: 1, Reason: "manual re-file", Action: action,
 	})
-	redirect(w, r, "/", "Moved this email to "+category+" and learned the sender.")
+	redirect(w, r, "/", "Moved this email to "+category+" and noted the correction.")
 }
 
 // --- Categories tab -----------------------------------------------------------

@@ -150,9 +150,10 @@
     <tr><td><strong>Categories</strong></td><td>Create/edit/delete categories. Each has a
       destination folder, <em>keep in inbox</em>, <em>flag</em>, and <em>mark read</em>
       toggles. Folders that don't exist yet are auto-created.</td></tr>
-    <tr><td><strong>Senders</strong></td><td>Allow/deny lists that override the AI — mark a
-      sender always-important or always-bulk. The per-sender Unsubscribe action lives here
-      too.</td></tr>
+    <tr><td><strong>Senders</strong></td><td>Allow/deny lists that <em>hard-override</em> the
+      AI — mark a sender always-important or always-bulk (a blanket rule, unlike the soft
+      corrections from Review). Use this only for senders you always want treated one way. The
+      per-sender Unsubscribe action lives here too.</td></tr>
     <tr><td><strong>Rules</strong></td><td>Review proposed Fastmail Sieve rules and
       approve/reject them. See the current managed block; one-click revert to a backed-up
       prior script.</td></tr>
@@ -166,10 +167,19 @@
     <strong>Reading the Review tab correctly:</strong> the <em>Category</em> pill is
     Winnow's actual decision. The per-row dropdown always defaults to the first category
     regardless of that decision — it's there to pick a correction, not as a readout of what
-    was chosen. <strong>Teach</strong> only adjusts how future mail from that sender is
-    handled; <strong>Move &amp; teach</strong> additionally re-files <em>this</em> email
-    right now over JMAP (it moves the mail even while dry-run is on, since it's an explicit
+    was chosen. <strong>Teach</strong> records a <em>soft</em> correction (a sender
+    observation); <strong>Move &amp; teach</strong> additionally re-files <em>this</em> email
+    now over JMAP (it moves the mail even while dry-run is on, since it's an explicit
     per-email action).
+  </div>
+  <div class="card note">
+    <strong>Corrections are soft, not blanket rules.</strong> Teaching records an observation
+    that nudges the classifier; Winnow only starts auto-filing a sender once it has seen
+    enough corrections and one category dominates (≈80%). A sender who emails you <em>both</em>
+    important and promotional mail from the same address therefore keeps getting judged
+    per-email by the AI — one correction won't force everything from them into a single
+    folder. When you <em>do</em> want a hard, always-on rule for a sender, set it explicitly
+    in the <strong>Senders</strong> tab.
   </div>
 
   <h2 id="dryrun">5. Dry-run: what to check before going live</h2>

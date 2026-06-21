@@ -92,7 +92,7 @@ func TestSenderRuleAddRemove(t *testing.T) {
 	}
 }
 
-func TestCorrectRecordsOverride(t *testing.T) {
+func TestCorrectRecordsSoftObservation(t *testing.T) {
 	s, st := testServer(t)
 	h := s.Handler()
 	cookie := login(t, h)
@@ -100,9 +100,13 @@ func TestCorrectRecordsOverride(t *testing.T) {
 	post(t, h, cookie, "/action/correct", url.Values{
 		"email_id": {"e1"}, "sender": {"x@promo.com"}, "category": {"Promotional"},
 	})
-	// Promotional is a moving category -> deny-bulk rule on the domain.
-	if cat, _, ok := st.SenderOverride("x@promo.com", "promo.com"); !ok || cat != "Promotional" {
-		t.Errorf("correction did not create deny rule: %q,%v", cat, ok)
+	// Soft: records an observation that biases the classifier over time...
+	if n, _ := st.DomainCategoryCount("promo.com", "Promotional"); n != 1 {
+		t.Errorf("correction should record one observation, got %d", n)
+	}
+	// ...but must NOT create a blanket override (so mixed senders stay per-email).
+	if _, _, ok := st.SenderOverride("x@promo.com", "promo.com"); ok {
+		t.Error("correction must not create a blanket sender rule")
 	}
 }
 
@@ -134,9 +138,12 @@ func TestRefileTeachesAndMovesAndLogs(t *testing.T) {
 		"email_id": {"e9"}, "sender": {"x@promo.com"}, "subject": {"Sale"},
 		"category": {"Promotional"},
 	})
-	// Teaches like correct does (deny-bulk on the domain)...
-	if cat, _, ok := st.SenderOverride("x@promo.com", "promo.com"); !ok || cat != "Promotional" {
-		t.Errorf("refile did not teach: %q,%v", cat, ok)
+	// Teaches softly (records an observation, no blanket override)...
+	if n, _ := st.DomainCategoryCount("promo.com", "Promotional"); n != 1 {
+		t.Errorf("refile did not record an observation, got %d", n)
+	}
+	if _, _, ok := st.SenderOverride("x@promo.com", "promo.com"); ok {
+		t.Error("refile must not create a blanket sender rule")
 	}
 	// ...and records a decision reflecting the move.
 	decs, _ := st.RecentDecisions(10)

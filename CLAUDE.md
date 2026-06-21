@@ -59,6 +59,13 @@ self-hosted via Docker.
   the global dry-run toggle is on (explicit user actions).
 - **Sieve safety.** Only ever edit the delimited managed block; validate before
   activating; back up the prior script.
+- **Corrections are soft.** Review's Teach / Move & teach record a sender
+  *observation* only (`teach()` in `internal/web/handlers.go`) — never a blanket
+  allow/deny rule. The classifier auto-applies a category only once a
+  sender/domain is consistently it (`dominantCategory`: ≥5 obs, ≥80%), so a
+  mixed sender keeps per-email AI judgment. Hard always-on overrides are an
+  explicit user action in the Senders tab. Don't make corrections write
+  `sender_rules`.
 
 ## Build / test / run
 
