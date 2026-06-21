@@ -135,12 +135,16 @@
   <h2 id="dashboard">4. The dashboard, tab by tab</h2>
   <table>
     <tr><th>Tab</th><th>What you do there</th></tr>
-    <tr><td><strong>Review</strong></td><td>Browse recent decisions with sender, category,
-      confidence, <strong>Source</strong> (heuristic vs Claude), and the action taken. Use
-      the <strong>Fix</strong> dropdown to re-file any email into a different category —
-      that correction also feeds the sender stats. Buttons here: <em>Run triage now</em>,
-      <em>Sweep inbox (preview)</em>, <em>Sweep inbox (apply)</em>. The
-      <em>LLM calls today</em> stat lives here too.</td></tr>
+    <tr><td><strong>Review</strong></td><td>Browse the decision log with timestamp,
+      sender/subject, category, confidence, <strong>Source</strong> (heuristic vs Claude),
+      and the action taken. <strong>Search</strong> across sender/subject/category and
+      <strong>sort</strong> by clicking the When / Sender / Category / Conf. headers; results
+      are paged 50 at a time with Newer/Older links. A stats header shows total decisions,
+      low-confidence (kept) count, how many were classified by Claude, and LLM calls today.
+      Per row, pick a category and either <strong>Teach</strong> (learn the sender for future
+      mail) or <strong>Move &amp; teach</strong> (also re-file this email now). Buttons up
+      top: <em>Run triage now</em>, <em>Sweep inbox (preview)</em>,
+      <em>Sweep inbox (apply)</em>.</td></tr>
     <tr><td><strong>Categories</strong></td><td>Create/edit/delete categories. Each has a
       destination folder, <em>keep in inbox</em>, <em>flag</em>, and <em>mark read</em>
       toggles. Folders that don't exist yet are auto-created.</td></tr>
@@ -158,9 +162,12 @@
   </table>
   <div class="card note">
     <strong>Reading the Review tab correctly:</strong> the <em>Category</em> pill is
-    Winnow's actual decision. The <em>Re-file as</em> dropdown always shows the first
-    category as its default regardless of the decision — it's for <em>correcting</em>, not a
-    readout of what was chosen.
+    Winnow's actual decision. The per-row dropdown always defaults to the first category
+    regardless of that decision — it's there to pick a correction, not as a readout of what
+    was chosen. <strong>Teach</strong> only adjusts how future mail from that sender is
+    handled; <strong>Move &amp; teach</strong> additionally re-files <em>this</em> email
+    right now over JMAP (it moves the mail even while dry-run is on, since it's an explicit
+    per-email action).
   </div>
 
   <h2 id="dryrun">5. Dry-run: what to check before going live</h2>
@@ -185,6 +192,13 @@
   <strong>about one to two weeks</strong> so your <em>periodic</em> senders (weekly
   newsletters, monthly statements, billing) each show up at least once and you can
   allow-list the important ones before they'd ever move.</p>
+  <div class="card note">
+    <strong>Preview is a true dry read.</strong> Running <em>Sweep inbox (preview)</em> never
+    moves mail, never marks it processed, and won't inflate the rule-learning counters or
+    pile up duplicate log entries — so you can re-run it as often as you like. The only cost
+    is that each run re-classifies the ambiguous mail, which re-bills those Claude calls
+    (heuristic-caught mail stays free).
+  </div>
 
   <h2 id="golive">6. Going live (and the existing-inbox backlog)</h2>
   <div class="card warn">
@@ -194,7 +208,12 @@
     from that point forward. The mail already sitting in your inbox won't move on its own.
   </div>
   <p>To file mail that's <em>already</em> in your inbox, use <strong>Sweep inbox (apply)</strong>
-  — the dedicated backlog path that processes the existing inbox in checkpointed chunks.</p>
+  — the dedicated backlog path that processes the existing inbox in checkpointed chunks of 75,
+  skipping anything already handled. Both sweep buttons look at the <strong>Inbox only</strong>
+  (mail already in other folders is left alone) and process up to <strong>10,000</strong>
+  messages per run, newest first. If your inbox is smaller than that, the sweep covers all of
+  it — old mail included. (If it's larger and you need the oldest beyond 10,000, ask and the
+  cap can be raised or made a setting.)</p>
   <div class="card note">
     <strong>Sweep (apply) overrides the dry-run toggle.</strong> It moves mail immediately
     even if the dry-run checkbox is still on. Treat that button as live.
@@ -209,7 +228,7 @@
       backlog into folders.</li>
   </ol>
   <p>Because nothing is ever deleted, the cost of switching a little early is just the
-  occasional misfiled email you fix with the <strong>Fix</strong> button.</p>
+  occasional misfiled email you correct with <strong>Move &amp; teach</strong>.</p>
 
   <h2 id="settings">7. Settings reference</h2>
   <table>
