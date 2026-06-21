@@ -48,8 +48,14 @@ over time. The name comes from *winnowing*: separating the grain from the chaff.
    `ANTHROPIC_API_KEY`, `APP_PASSWORD_HASH`, and `SESSION_SECRET` (a random
    string, e.g. `openssl rand -hex 32`).
 
-   > The file must be named **`winnow.env`** (not `.env`) so Docker Compose
-   > doesn't try to interpolate the `$` signs in the bcrypt password hash.
+   > **Paste the bcrypt hash raw — do not wrap it in quotes and do not add an
+   > inline `#` comment after it.** The hash contains `$` signs; the compose
+   > file loads `winnow.env` with `format: raw` so those are preserved verbatim,
+   > which means any surrounding quotes or trailing comment would become part of
+   > the value and break login. Just `APP_PASSWORD_HASH=$2a$12$...`.
+   >
+   > The file is also named **`winnow.env`** (not `.env`) so Docker Compose
+   > doesn't separately read it for YAML variable substitution.
 
 4. **Run:**
 
