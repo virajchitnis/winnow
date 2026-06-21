@@ -11,8 +11,12 @@
   <form class="inline" method="post" action="/action/sweep"><input type="hidden" name="apply" value="on"><button>Sweep inbox (apply)</button></form>
 </div>
 
-<div class="card">
-  <table>
+<div class="card tablewrap">
+  <table class="fixed">
+    <colgroup>
+      <col style="width:34%"><col style="width:13%"><col style="width:8%">
+      <col style="width:11%"><col style="width:11%"><col style="width:23%">
+    </colgroup>
     <tr><th>Sender / Subject</th><th>Category</th><th>Conf.</th><th>Source</th><th>Action</th><th>Re-file as</th></tr>
     {{range .Decisions}}
     <tr>
