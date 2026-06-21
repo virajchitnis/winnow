@@ -204,11 +204,18 @@ func (s *Scheduler) record(e jmap.Email, r classify.Result, outcomes []actions.R
 		UsedLLM:       r.UsedLLM,
 	})
 
-	// Mark processed only when asked and the action stuck (not an error, not a
-	// dry-run preview) so failures and previews are re-handled later.
-	if mark && action != string(actions.ActionError) && action != string(actions.ActionDryRun) {
-		_ = s.store.MarkProcessed(e.ID)
+	// A decision is "persisted" only when the action actually stuck — not an
+	// error, and not a dry-run preview. The processed mark and every learning
+	// side-effect (sender stats, Sieve candidates, unsubscribe metadata) happen
+	// only then. This keeps a preview a true side-effect-free dry read: it can be
+	// re-run without inflating the rule-learning counters or double-acting, and
+	// the decision row written above is its only output.
+	persisted := mark && action != string(actions.ActionError) && action != string(actions.ActionDryRun)
+	if !persisted {
+		return
 	}
+
+	_ = s.store.MarkProcessed(e.ID)
 
 	if sender != "" && r.Category != "" {
 		_ = s.store.RecordObservation(sender, domain, r.Category)

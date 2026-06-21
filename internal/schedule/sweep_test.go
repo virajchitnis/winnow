@@ -64,6 +64,32 @@ func TestSweepPreviewDoesNotApply(t *testing.T) {
 	}
 }
 
+func TestSweepPreviewIsSideEffectFree(t *testing.T) {
+	st, fj, defaults := sweepSetup(t)
+	body := `[{"i":0,"category":"Promotional","confidence":0.95,"summary":"deal"}]`
+	s := newSched(t, st, fj, defaults, body)
+
+	// Run the preview twice — it must be re-runnable cleanly.
+	for i := 0; i < 2; i++ {
+		if _, err := s.Sweep(context.Background(), false); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Exactly one decision row despite two previews (no duplicates).
+	decisions, _ := st.RecentDecisions(10)
+	if len(decisions) != 1 {
+		t.Errorf("preview should keep one decision per email, got %d", len(decisions))
+	}
+	// No learning side-effects: sender stats and Sieve candidates untouched.
+	if n, _ := st.DomainCategoryCount("shop.example", "Promotional"); n != 0 {
+		t.Errorf("preview must not record sender observations, got count %d", n)
+	}
+	if cands, _ := st.SieveCandidates("proposed"); len(cands) != 0 {
+		t.Errorf("preview must not propose Sieve candidates, got %d", len(cands))
+	}
+}
+
 func TestSweepApplyMovesAndMarks(t *testing.T) {
 	st, fj, defaults := sweepSetup(t)
 	body := `[{"i":0,"category":"Promotional","confidence":0.95,"summary":"deal"}]`
@@ -77,6 +103,10 @@ func TestSweepApplyMovesAndMarks(t *testing.T) {
 	}
 	if seen, _ := st.IsProcessed("e1"); !seen {
 		t.Error("apply sweep should mark processed")
+	}
+	// Apply (unlike preview) seeds the rule-learning stats.
+	if n, _ := st.DomainCategoryCount("shop.example", "Promotional"); n != 1 {
+		t.Errorf("apply sweep should record one observation, got %d", n)
 	}
 }
 
