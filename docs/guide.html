@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winnow — User Guide</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1c1c1a; --muted:#5f5e5a; --bg:#f4f1ea; --card:#fff; --accent:#0f6e56; --border:rgba(0,0,0,.12); }
+  @media (prefers-color-scheme: dark){ :root{ --fg:#ece9e2; --muted:#a8a59d; --bg:#16150f; --card:#1f1e17; --accent:#5dcaa5; --border:rgba(255,255,255,.14);} }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--fg); background:var(--bg); }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  h1 { font-size: 2rem; margin:.2rem 0 .2rem; }
+  .tag { color: var(--muted); font-size: 1.05rem; margin:0 0 1.5rem; }
+  h2 { font-size: 1.35rem; margin: 2.6rem 0 .6rem; padding-top:.6rem; border-top:1px solid var(--border); }
+  h3 { font-size: 1.08rem; margin: 1.6rem 0 .4rem; }
+  a { color: var(--accent); }
+  ul, ol { padding-left: 1.3rem; }
+  li { margin:.35rem 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1rem 1.25rem; margin:1rem 0; }
+  .note { border-left:3px solid var(--accent); }
+  .warn { border-left:3px solid #d08a1d; }
+  code { background:rgba(127,127,127,.15); padding:.1em .4em; border-radius:5px; font-size:.92em; }
+  pre { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1rem; overflow:auto; }
+  pre code { background:none; padding:0; }
+  table { border-collapse:collapse; width:100%; margin:1rem 0; font-size:.95rem; }
+  th, td { text-align:left; padding:.5rem .6rem; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  nav.top { margin-bottom:1.5rem; font-size:.95rem; }
+  .toc { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1rem 1.25rem; margin:1.5rem 0 2rem; }
+  .toc ol { margin:.3rem 0; }
+  .toc a { text-decoration:none; }
+  footer { color:var(--muted); font-size:.9rem; margin-top:3rem; border-top:1px solid var(--border); padding-top:1rem; }
+  .pill { display:inline-block; background:rgba(127,127,127,.18); border-radius:20px; padding:.05em .6em; font-size:.85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top"><a href="./">&larr; Winnow home</a></nav>
+  <h1>Winnow User Guide</h1>
+  <p class="tag">Everything you need to run Winnow day to day — from first setup to going live and ongoing maintenance.</p>
+
+  <div class="toc">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#how">How Winnow thinks</a></li>
+      <li><a href="#setup">Setup</a></li>
+      <li><a href="#access">Reaching the dashboard</a></li>
+      <li><a href="#dashboard">The dashboard, tab by tab</a></li>
+      <li><a href="#dryrun">Dry-run: what to check before going live</a></li>
+      <li><a href="#golive">Going live (and the existing-inbox backlog)</a></li>
+      <li><a href="#settings">Settings reference</a></li>
+      <li><a href="#rules">Sieve rules — server-side filtering</a></li>
+      <li><a href="#unsub">Assisted unsubscribe</a></li>
+      <li><a href="#digest">The daily digest</a></li>
+      <li><a href="#maint">Maintenance &amp; backups</a></li>
+      <li><a href="#trouble">Troubleshooting</a></li>
+    </ol>
+  </div>
+
+  <h2 id="how">1. How Winnow thinks</h2>
+  <p>Winnow polls your Fastmail inbox over JMAP and sorts new mail into categories,
+  each mapped to a destination folder. Three principles shape everything it does:</p>
+  <ul>
+    <li><strong>Cheap-first.</strong> Free header heuristics (<code>List-Unsubscribe</code>,
+      <code>List-Id</code>, <code>Precedence: bulk</code>, known bulk senders) catch the
+      obvious noise. Only genuinely ambiguous mail is sent to Claude, so your API cost
+      stays tiny. The Review tab's <strong>Source</strong> column shows which path each
+      decision took.</li>
+    <li><strong>Safety bias.</strong> When the classifier isn't confident (below your
+      confidence threshold), mail is <em>left in the inbox, unflagged</em>. A stray promo
+      in your inbox is the worst case — a hidden important email never is.</li>
+    <li><strong>Nothing is ever deleted.</strong> Every action is a move or a flag, fully
+      reversible from the dashboard.</li>
+  </ul>
+
+  <h2 id="setup">2. Setup</h2>
+
+  <h3>2.1 Create a Fastmail API token</h3>
+  <p>In Fastmail: <em>Settings &rarr; Privacy &amp; Security &rarr; Manage API tokens &rarr;
+  New API token</em>. Grant these scopes:</p>
+  <ul>
+    <li><strong>Mail</strong> — read and file your mail</li>
+    <li><strong>Email submission</strong> — send the daily digest</li>
+    <li><strong>Sieve / Filters</strong> — manage the server-side rules (optional but recommended)</li>
+  </ul>
+
+  <h3>2.2 Generate a dashboard password hash</h3>
+  <pre><code>docker compose run --rm -it winnow hashpw</code></pre>
+  <p>Enter a password when prompted and copy the printed bcrypt hash (starts with
+  <code>$2a$12$</code>). The <code>-it</code> flag is required — without it the prompt
+  can't read your input.</p>
+
+  <h3>2.3 Configure <code>winnow.env</code></h3>
+  <p>Copy <code>.env.example</code> to <code>winnow.env</code> and fill in:</p>
+  <table>
+    <tr><th>Variable</th><th>What it is</th></tr>
+    <tr><td><code>FASTMAIL_TOKEN</code></td><td>The API token from step 2.1</td></tr>
+    <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Your Anthropic API key</td></tr>
+    <tr><td><code>APP_PASSWORD_HASH</code></td><td>The bcrypt hash from step 2.2</td></tr>
+    <tr><td><code>SESSION_SECRET</code></td><td>A random string, e.g. <code>openssl rand -hex 32</code></td></tr>
+  </table>
+  <div class="card warn">
+    <strong>Two things that will bite you with the password hash:</strong>
+    <ul>
+      <li>The file must be named <code>winnow.env</code>, <em>not</em> <code>.env</code>.
+        Docker Compose auto-reads a file named exactly <code>.env</code> and would try to
+        interpolate the <code>$</code> signs in the hash.</li>
+      <li>Paste the hash <strong>raw</strong> — no surrounding quotes, no trailing
+        <code># comment</code>. The compose file loads <code>winnow.env</code> with
+        <code>format: raw</code> so quotes/comments would become literal parts of the value
+        and break login. Just <code>APP_PASSWORD_HASH=$2a$12$...</code></li>
+    </ul>
+  </div>
+
+  <h3>2.4 Start it</h3>
+  <pre><code>docker compose up -d</code></pre>
+  <p>The first run seeds the preset categories and starts in <strong>dry-run mode</strong>
+  — it previews classifications without moving anything. That's exactly what you want for
+  the first week.</p>
+
+  <h2 id="access">3. Reaching the dashboard</h2>
+  <p>The app binds to <code>0.0.0.0:8080</code> inside the container, published on a host
+  port (e.g. <code>8083</code>). Two private ways in:</p>
+  <ul>
+    <li><strong>Tailscale (primary).</strong> Reach it at your server's Tailnet
+      address, e.g. <code>http://your-server:8083</code>. Note the host port must bind to
+      all interfaces (not <code>127.0.0.1</code>) for Tailscale traffic to reach it.</li>
+    <li><strong>Cloudflare Tunnel (optional public path).</strong> Start with
+      <code>docker compose --profile tunnel up -d</code> and gate it with Cloudflare Access.
+      Winnow additionally verifies the Access JWT on every request. See the README for the
+      full setup.</li>
+  </ul>
+
+  <h2 id="dashboard">4. The dashboard, tab by tab</h2>
+  <table>
+    <tr><th>Tab</th><th>What you do there</th></tr>
+    <tr><td><strong>Review</strong></td><td>Browse recent decisions with sender, category,
+      confidence, <strong>Source</strong> (heuristic vs Claude), and the action taken. Use
+      the <strong>Fix</strong> dropdown to re-file any email into a different category —
+      that correction also feeds the sender stats. Buttons here: <em>Run triage now</em>,
+      <em>Sweep inbox (preview)</em>, <em>Sweep inbox (apply)</em>. The
+      <em>LLM calls today</em> stat lives here too.</td></tr>
+    <tr><td><strong>Categories</strong></td><td>Create/edit/delete categories. Each has a
+      destination folder, <em>keep in inbox</em>, <em>flag</em>, and <em>mark read</em>
+      toggles. Folders that don't exist yet are auto-created.</td></tr>
+    <tr><td><strong>Senders</strong></td><td>Allow/deny lists that override the AI — mark a
+      sender always-important or always-bulk. The per-sender Unsubscribe action lives here
+      too.</td></tr>
+    <tr><td><strong>Rules</strong></td><td>Review proposed Fastmail Sieve rules and
+      approve/reject them. See the current managed block; one-click revert to a backed-up
+      prior script.</td></tr>
+    <tr><td><strong>Unsubscribe</strong></td><td>Every eligible sender, filterable by status.
+      Choose <em>Unsubscribe</em> or <em>Keep receiving</em> per sender — both reversible.</td></tr>
+    <tr><td><strong>Settings</strong></td><td>All live-editable config (see
+      <a href="#settings">section 7</a>), plus Test Fastmail / Test Anthropic buttons and
+      change-password.</td></tr>
+  </table>
+  <div class="card note">
+    <strong>Reading the Review tab correctly:</strong> the <em>Category</em> pill is
+    Winnow's actual decision. The <em>Re-file as</em> dropdown always shows the first
+    category as its default regardless of the decision — it's for <em>correcting</em>, not a
+    readout of what was chosen.
+  </div>
+
+  <h2 id="dryrun">5. Dry-run: what to check before going live</h2>
+  <p>While dry-run is on, Winnow logs what it <em>would</em> do without touching your mail.
+  Before switching it off, satisfy these:</p>
+  <ul>
+    <li><strong>No false negatives.</strong> Scan for any genuinely important email assigned
+      to a bulk category (Promotional/Newsletters). This is the one that matters. If you
+      find one, add that sender to the allow list in the Senders tab.</li>
+    <li><strong>Heuristics are catching the obvious bulk.</strong> In the Source column,
+      promos and newsletters with unsubscribe headers should read <code>heuristic</code>
+      (free). If clear bulk shows <code>Claude</code>, you're paying unnecessarily.</li>
+    <li><strong>Confidence threshold feels right.</strong> Too many legit emails marked
+      <span class="pill">low</span> and kept back? Lower the threshold. Junk slipping through
+      as low-confidence? Raise it.</li>
+    <li><strong>Folder mappings make sense</strong> for your inbox (Categories tab).</li>
+  </ul>
+  <h3>How long?</h3>
+  <p>Gate on confidence, not the calendar. Don't wait passively — run
+  <strong>Sweep inbox (preview)</strong> to classify your entire existing inbox at once and
+  get a large sample to judge immediately. Then keep dry-run triage running for
+  <strong>about one to two weeks</strong> so your <em>periodic</em> senders (weekly
+  newsletters, monthly statements, billing) each show up at least once and you can
+  allow-list the important ones before they'd ever move.</p>
+
+  <h2 id="golive">6. Going live (and the existing-inbox backlog)</h2>
+  <div class="card warn">
+    <strong>Turning off dry-run does <em>not</em> retroactively apply past decisions.</strong>
+    Those decisions are point-in-time previews, not a queue. Normal triage advances its
+    position each cycle, so once dry-run is off it acts only on <em>new</em> mail arriving
+    from that point forward. The mail already sitting in your inbox won't move on its own.
+  </div>
+  <p>To file mail that's <em>already</em> in your inbox, use <strong>Sweep inbox (apply)</strong>
+  — the dedicated backlog path that processes the existing inbox in checkpointed chunks.</p>
+  <div class="card note">
+    <strong>Sweep (apply) overrides the dry-run toggle.</strong> It moves mail immediately
+    even if the dry-run checkbox is still on. Treat that button as live.
+  </div>
+  <h3>Recommended go-live sequence</h3>
+  <ol>
+    <li>Run <strong>Sweep inbox (preview)</strong> and review the full-inbox proposals.</li>
+    <li>Let triage run in dry-run ~1 week to catch periodic senders; allow-list anything
+      important.</li>
+    <li>When happy: uncheck <strong>dry-run</strong> in Settings (live triage for new mail)
+      <em>and</em> run <strong>Sweep inbox (apply)</strong> once to clear the existing
+      backlog into folders.</li>
+  </ol>
+  <p>Because nothing is ever deleted, the cost of switching a little early is just the
+  occasional misfiled email you fix with the <strong>Fix</strong> button.</p>
+
+  <h2 id="settings">7. Settings reference</h2>
+  <table>
+    <tr><th>Setting</th><th>Meaning</th></tr>
+    <tr><td>Poll interval</td><td>How often triage runs (e.g. <code>15m0s</code>). Reschedules live.</td></tr>
+    <tr><td>Digest hour / Timezone</td><td>When the daily digest is sent, in your zone.</td></tr>
+    <tr><td>Confidence threshold</td><td>Below this, mail is kept in the inbox unmoved. Default 0.75.</td></tr>
+    <tr><td>Daily LLM-call cap</td><td>Once hit, ambiguous mail is left in the inbox (no further API calls) and the cap is noted in the digest.</td></tr>
+    <tr><td>Decision log retention</td><td>Decisions older than N days are auto-pruned daily (0 = keep forever).</td></tr>
+    <tr><td>Unsubscribe verify window</td><td>Days to wait with no new mail before an unsubscribe is marked verified.</td></tr>
+    <tr><td>Model</td><td>Classifier model (default Haiku; switch to a stronger model for tougher mail at higher cost).</td></tr>
+    <tr><td>Privacy mode</td><td>subject + sender + snippet (default) or subject + sender only.</td></tr>
+    <tr><td>dry-run</td><td>Master preview switch for normal triage. (Sweep apply overrides it.)</td></tr>
+    <tr><td>daily digest</td><td>Enable/disable the digest email.</td></tr>
+  </table>
+  <p>API tokens and secrets are configured via the server environment and are never shown
+  or editable in the UI — a dashboard authenticated <em>by</em> those secrets shouldn't be
+  able to read them.</p>
+
+  <h2 id="rules">8. Sieve rules — server-side filtering</h2>
+  <p>As Winnow sees a sender domain land in the same category repeatedly, it proposes a
+  <strong>Fastmail Sieve rule</strong> in the Rules tab. Approve it and that domain is then
+  filed <em>server-side at delivery</em> — free, instant, and working even when Winnow is
+  offline.</p>
+  <ul>
+    <li>Winnow only ever edits its own delimited managed block. Your hand-made Fastmail
+      rules are left byte-for-byte untouched.</li>
+    <li>Rules are consolidated by domain (one rule per category holding a domain list), so
+      the managed rule count stays at a handful no matter how many domains accumulate.</li>
+    <li>Every change is validated before activation, and the prior script is backed up with
+      one-click revert.</li>
+  </ul>
+
+  <h2 id="unsub">9. Assisted unsubscribe</h2>
+  <p>The Unsubscribe tab ranks bulk senders that expose a <code>List-Unsubscribe</code>
+  header. For each you choose:</p>
+  <ul>
+    <li><strong>Unsubscribe</strong> — for RFC 8058 One-Click and <code>mailto:</code>
+      methods, Winnow executes it after approval. Bare HTTPS links are shown for you to open
+      manually and are never auto-visited (that's a tracking/phishing vector).</li>
+    <li><strong>Keep receiving</strong> — file it to a category instead. Reversible: you can
+      unsubscribe a kept sender later, even months on, because the unsubscribe method is
+      persisted when first seen.</li>
+  </ul>
+  <p>After you unsubscribe, Winnow watches for continued mail. If a sender keeps emailing
+  past the verify window, it flags them and offers a Sieve-rule fallback.</p>
+
+  <h2 id="digest">10. The daily digest</h2>
+  <p>Once a day Winnow emails you a summary of what it filed and what needs your attention,
+  sent from your own address to yourself (derived from the JMAP session — never hardcoded).
+  It doubles as a <strong>heartbeat</strong>: if the digest stops arriving, something is
+  wrong. Any persistent errors (expired token, repeated API failures, spend cap hit) appear
+  as a line in the digest and as a banner in the dashboard.</p>
+
+  <h2 id="maint">11. Maintenance &amp; backups</h2>
+  <ul>
+    <li><strong>Backups.</strong> All learned state — categories, sender stats, rule backups,
+      decision log, unsubscribe metadata — lives in the SQLite database on the
+      <code>winnow-data</code> volume. Back it up with a volume copy or
+      <code>sqlite3 winnow.db ".backup backup.db"</code>.</li>
+    <li><strong>Decision log</strong> auto-prunes daily per your retention setting.</li>
+    <li><strong>Upgrades.</strong> Schema migrations run automatically on startup, so pulling
+      a new image and restarting is safe.</li>
+  </ul>
+
+  <h2 id="trouble">12. Troubleshooting</h2>
+  <table>
+    <tr><th>Symptom</th><th>Cause &amp; fix</th></tr>
+    <tr><td><code>The "..." variable is not set</code> warning on startup</td>
+      <td>Compose is interpolating a <code>$</code> in your env file. Ensure the file is named
+        <code>winnow.env</code> and the compose <code>env_file</code> uses
+        <code>format: raw</code>.</td></tr>
+    <tr><td>Login always fails</td>
+      <td>The stored hash doesn't match your password, often because it was pasted with
+        quotes or a trailing comment. Regenerate with <code>hashpw</code> and paste it raw,
+        with no quotes or comment.</td></tr>
+    <tr><td><code>jmap method error "invalidArguments"</code> during triage</td>
+      <td>A JMAP request was malformed for Fastmail. Winnow uses <code>header:*:asRaw</code>
+        for header properties; make sure you're on a current build.</td></tr>
+    <tr><td>Dashboard unreachable over Tailscale</td>
+      <td>The host port is bound to <code>127.0.0.1</code>. Bind to all interfaces (or your
+        Tailscale IP) so Tailnet traffic can reach it.</td></tr>
+    <tr><td>Mail in the inbox isn't being filed after going live</td>
+      <td>Normal triage only acts on new mail. Run <strong>Sweep inbox (apply)</strong> for
+        the existing backlog (see <a href="#golive">section 6</a>).</td></tr>
+  </table>
+
+  <footer>
+    Open source under the MIT license. Screenshots and examples use synthetic data.
+    &middot; <a href="./">Back to home</a>
+  </footer>
+</div>
+</body>
+</html>

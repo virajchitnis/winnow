@@ -27,6 +27,7 @@
 <div class="wrap">
   <h1>Winnow</h1>
   <p class="tag">A self-hosted AI assistant that triages your Fastmail inbox — files the noise, surfaces what matters. Separating the grain from the chaff.</p>
+  <p><a href="guide.html"><strong>&rarr; Read the full user guide</strong></a></p>
 
   <h2>What it does</h2>
   <ul>
@@ -41,7 +42,7 @@
 
   <h2>Quickstart</h2>
   <div class="card">
-    <pre>docker run --rm ghcr.io/OWNER/winnow hashpw   # generate APP_PASSWORD_HASH
+    <pre>docker run --rm ghcr.io/virajchitnis/winnow hashpw   # generate APP_PASSWORD_HASH
 cp .env.example .env                          # fill in tokens
 docker compose up -d                          # starts in safe dry-run mode</pre>
     First run seeds the preset categories and previews classifications without
@@ -59,7 +60,7 @@ docker compose up -d                          # starts in safe dry-run mode</pre
     <a href="{{RELEASE_BASE}}/winnow_{{LATEST_TAG}}_linux_amd64.tar.gz">linux / amd64</a>
     <a href="{{RELEASE_BASE}}/winnow_{{LATEST_TAG}}_linux_arm64.tar.gz">linux / arm64</a>
     <a href="{{RELEASE_BASE}}/winnow_{{LATEST_TAG}}_darwin_arm64.tar.gz">macOS / arm64</a>
-    <p>Or pull the container: <code>ghcr.io/OWNER/winnow:latest</code></p>
+    <p>Or pull the container: <code>ghcr.io/virajchitnis/winnow:latest</code></p>
   </div>
 
   <footer>
