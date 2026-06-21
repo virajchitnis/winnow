@@ -249,6 +249,9 @@ func expect(resps []invocation, id string, v any) error {
 		if r.Name == "error" {
 			var me MethodError
 			_ = json.Unmarshal(r.Args, &me)
+			if me.Description == "" {
+				me.RawArgs = string(r.Args)
+			}
 			return &me
 		}
 		if v == nil {

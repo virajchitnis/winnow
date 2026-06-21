@@ -21,11 +21,16 @@ func (e *HTTPError) Retryable() bool {
 type MethodError struct {
 	Type        string `json:"type"`
 	Description string `json:"description"`
+	// RawArgs holds the full error JSON for debugging when Description is empty.
+	RawArgs string `json:"-"`
 }
 
 func (e *MethodError) Error() string {
 	if e.Description != "" {
 		return fmt.Sprintf("jmap method error %q: %s", e.Type, e.Description)
+	}
+	if e.RawArgs != "" {
+		return fmt.Sprintf("jmap method error %q (raw: %s)", e.Type, e.RawArgs)
 	}
 	return fmt.Sprintf("jmap method error %q", e.Type)
 }
