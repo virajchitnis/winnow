@@ -163,6 +163,57 @@ func TestRefileUnknownCategory(t *testing.T) {
 	}
 }
 
+func TestApplyReviewedFilesPreviewedMail(t *testing.T) {
+	st, fj, defaults := sweepSetup(t)
+	s := newSched(t, st, fj, defaults, "")
+	// A preview (dry_run) decision exists for e1, which is still in the inbox.
+	_ = st.RecordDecision(store.Decision{
+		EmailID: "e1", Sender: "a@shop.example", Category: "Promotional",
+		Action: "dry_run", Confidence: 0.95,
+	})
+
+	n, err := s.ApplyReviewed(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("applied = %d, want 1", n)
+	}
+	if len(fj.updated) != 1 || !fj.updated[0].MailboxIDs["mb-Promotions"] {
+		t.Errorf("should move e1 to Promotions: %+v", fj.updated)
+	}
+	if seen, _ := st.IsProcessed("e1"); !seen {
+		t.Error("should mark processed")
+	}
+	// No new LLM calls, and the preview row is superseded by the real outcome.
+	if calls, _ := st.LLMCallsToday(); calls != 0 {
+		t.Errorf("apply-reviewed must not call the LLM, got %d", calls)
+	}
+	if pend, _ := st.PendingPreviewDecisions(); len(pend) != 0 {
+		t.Errorf("preview row should be cleared, got %d", len(pend))
+	}
+}
+
+func TestApplyReviewedKeepsLowConfidence(t *testing.T) {
+	st, fj, defaults := sweepSetup(t)
+	s := newSched(t, st, fj, defaults, "")
+	// A low-confidence preview: the category is Promotional but it was kept in
+	// the inbox, so applying it must NOT move the mail.
+	_ = st.RecordDecision(store.Decision{
+		EmailID: "e1", Sender: "a@shop.example", Category: "Promotional",
+		Action: "dry_run", Confidence: 0.3, LowConfidence: true,
+	})
+
+	if _, err := s.ApplyReviewed(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range fj.updated {
+		if u.MailboxIDs != nil {
+			t.Errorf("low-confidence decision must not move mail: %+v", u)
+		}
+	}
+}
+
 func TestChangedSinceFallback(t *testing.T) {
 	st, fj, defaults := sweepSetup(t)
 	// Seed a state token so triage runs the changes path (not bootstrap), then

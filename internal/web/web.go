@@ -26,6 +26,7 @@ type Scheduler interface {
 	TriageOnce(ctx context.Context)
 	Sweep(ctx context.Context, apply bool) (schedule.SweepResult, error)
 	Refile(ctx context.Context, emailID, category string) (string, error)
+	ApplyReviewed(ctx context.Context) (int, error)
 	HealthSnapshot() schedule.Health
 }
 
@@ -118,6 +119,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/action/password", s.requireAuth(s.handlePasswordChange))
 	mux.HandleFunc("/action/run", s.requireAuth(s.handleRunNow))
 	mux.HandleFunc("/action/sweep", s.requireAuth(s.handleSweep))
+	mux.HandleFunc("/action/apply-reviewed", s.requireAuth(s.handleApplyReviewed))
 	mux.HandleFunc("/action/test", s.requireAuth(s.handleTestConnection))
 
 	return mux

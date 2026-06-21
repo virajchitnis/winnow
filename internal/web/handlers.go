@@ -425,4 +425,11 @@ func (s *Server) handleSweep(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/", "Inbox sweep started ("+mode+").")
 }
 
+func (s *Server) handleApplyReviewed(w http.ResponseWriter, r *http.Request) {
+	go func() {
+		_, _ = s.sched.ApplyReviewed(contextDetached())
+	}()
+	redirect(w, r, "/", "Applying reviewed decisions to the inbox.")
+}
+
 func urlEncode(s string) string { return url.QueryEscape(s) }

@@ -26,7 +26,8 @@ self-hosted via Docker.
   dry-run; retry with backoff.
 - `internal/schedule/` — triage (`Email/changes` + high-water mark), one-time
   sweep, daily digest + maintenance, single-flight run lock. `Refile` re-files a
-  single email on demand.
+  single email on demand; `ApplyReviewed` files previewed mail from the decision
+  log (no re-classification).
 - `internal/web/` — dashboard (server-rendered `html/template`, no SPA): Review,
   Categories, Senders, Rules, Unsubscribe, Settings; password auth + session;
   Cloudflare Access JWT middleware; `/healthz`.
@@ -39,7 +40,9 @@ self-hosted via Docker.
   in the inbox unmoved. Dry-run and sweep *preview* must not mutate mail.
 - **Dry-run scope.** `DryRun` is honored in exactly one place — `actions.Apply`
   (the automatic triage/sweep-preview pipeline). It does NOT gate explicit user
-  actions, which act regardless: sweep *apply*, `Refile` (Move & teach), Sieve
+  actions, which act regardless: sweep *apply*, `ApplyReviewed` (apply reviewed
+  decisions — files previewed mail from the log with no new LLM calls), `Refile`
+  (Move & teach), Sieve
   rule apply (writes to Fastmail; then Fastmail files server-side, fully outside
   Winnow), unsubscribe execution, Teach corrections, and the daily digest (gated
   by `DigestEnabled`). Keep it that way — anything the user clicks is deliberate.

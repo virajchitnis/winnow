@@ -123,6 +123,21 @@ func (s *Store) QueryDecisions(q DecisionQuery) ([]Decision, error) {
 	return scanDecisions(rows)
 }
 
+// PendingPreviewDecisions returns the preview (dry_run) decisions — the ones
+// previewed but never applied. RecordDecision keeps at most one dry_run row per
+// email, so each row here is the latest preview for a distinct email.
+func (s *Store) PendingPreviewDecisions() ([]Decision, error) {
+	rows, err := s.db.Query(`
+		SELECT id, email_id, thread_id, sender, subject, category, confidence,
+			reason, summary, action, low_confidence, used_llm, created_at
+		FROM decisions WHERE action = 'dry_run' ORDER BY id DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDecisions(rows)
+}
+
 // DecisionsSince returns decisions recorded at/after the given RFC3339 cutoff,
 // newest first — used to build the daily digest.
 func (s *Store) DecisionsSince(cutoff string) ([]Decision, error) {

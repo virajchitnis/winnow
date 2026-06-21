@@ -31,8 +31,10 @@ over time. The name comes from *winnowing*: separating the grain from the chaff.
   from a free heuristic or from Claude, and lets you **Teach** (learn a sender)
   or **Move & teach** (also re-file that email) per row.
 - **One-time inbox sweep.** Preview classifications for your whole existing inbox
-  (a side-effect-free dry read you can re-run), then apply them in checkpointed
-  chunks — separate from ongoing triage, which only touches new mail.
+  (a side-effect-free dry read you can re-run), then either **apply the reviewed
+  decisions** (file them using the categories you already saw — no new API calls)
+  or re-sweep to re-classify. Separate from ongoing triage, which only touches
+  new mail.
 
 See the [full user guide](https://virajchitnis.github.io/winnow/guide.html) for
 day-to-day usage, the go-live sequence, and troubleshooting.

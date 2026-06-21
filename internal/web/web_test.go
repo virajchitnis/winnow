@@ -17,10 +17,11 @@ import (
 
 // fakeScheduler satisfies web.Scheduler.
 type fakeScheduler struct {
-	swept     bool
-	refiled   bool
-	refileTo  string
-	refileErr error
+	swept           bool
+	refiled         bool
+	refileTo        string
+	refileErr       error
+	appliedReviewed bool
 }
 
 func (f *fakeScheduler) TriageOnce(context.Context) {}
@@ -35,6 +36,10 @@ func (f *fakeScheduler) Refile(_ context.Context, _, category string) (string, e
 	f.refiled = true
 	f.refileTo = category
 	return "moved", nil
+}
+func (f *fakeScheduler) ApplyReviewed(context.Context) (int, error) {
+	f.appliedReviewed = true
+	return 0, nil
 }
 func (f *fakeScheduler) HealthSnapshot() schedule.Health { return schedule.Health{LastPollOK: true} }
 
