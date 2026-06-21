@@ -16,11 +16,12 @@ type Email struct {
 	ReceivedAt time.Time       `json:"receivedAt"`
 	Preview    string          `json:"preview"`
 
-	// Header values requested via header:* properties (see EmailProperties).
-	ListUnsubscribe     string `json:"header:List-Unsubscribe:asText"`
-	ListUnsubscribePost string `json:"header:List-Unsubscribe-Post:asText"`
-	ListID              string `json:"header:List-Id:asText"`
-	Precedence          string `json:"header:Precedence:asText"`
+	// Header values requested via header:*:asRaw properties (see EmailProperties).
+	// Values include the leading space and may include folding whitespace.
+	ListUnsubscribe     string `json:"header:List-Unsubscribe:asRaw"`
+	ListUnsubscribePost string `json:"header:List-Unsubscribe-Post:asRaw"`
+	ListID              string `json:"header:List-Id:asRaw"`
+	Precedence          string `json:"header:Precedence:asRaw"`
 }
 
 // EmailAddress is a JMAP EmailAddress (name + email).
@@ -41,10 +42,10 @@ func (e *Email) SenderEmail() string {
 // classify and to drive unsubscribe, without pulling full bodies.
 var EmailProperties = []string{
 	"id", "threadId", "mailboxIds", "keywords", "from", "subject", "receivedAt", "preview",
-	"header:List-Unsubscribe:asText",
-	"header:List-Unsubscribe-Post:asText",
-	"header:List-Id:asText",
-	"header:Precedence:asText",
+	"header:List-Unsubscribe:asRaw",
+	"header:List-Unsubscribe-Post:asRaw",
+	"header:List-Id:asRaw",
+	"header:Precedence:asRaw",
 }
 
 // QueryInbox returns up to limit email ids currently in the given mailbox,

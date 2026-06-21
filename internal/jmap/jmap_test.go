@@ -172,8 +172,8 @@ func TestGetEmailsParsesHeaders(t *testing.T) {
 				"from":                                []map[string]any{{"name": "Deals", "email": "Deals@Retailer.com"}},
 				"subject":                             "40% off",
 				"preview":                             "limited time",
-				"header:List-Unsubscribe:asText":      "<mailto:unsub@retailer.com>",
-				"header:List-Unsubscribe-Post:asText": "List-Unsubscribe=One-Click",
+				"header:List-Unsubscribe:asRaw":      " <mailto:unsub@retailer.com>",
+				"header:List-Unsubscribe-Post:asRaw": " List-Unsubscribe=One-Click",
 			}},
 		}
 	}
