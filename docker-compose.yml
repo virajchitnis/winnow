@@ -29,7 +29,7 @@ services:
     # Bind to the Tailscale IP in production if you want to avoid the public
     # interface entirely, e.g. "100.x.y.z:8080:8080".
     ports:
-      - "127.0.0.1:8083:8080"
+      - "8083:8080"
     healthcheck:
       # distroless has no shell/curl; the Go binary self-checks via `winnow`...
       # Healthcheck is provided by the platform hitting /healthz, or omit.
