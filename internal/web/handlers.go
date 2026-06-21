@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"winnow/internal/store"
 )
@@ -52,13 +53,54 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	decisions, _ := s.store.RecentDecisions(100)
+	const pageSize = 50
+	offset := 0
+	if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
+		offset = n
+	}
+	// Fetch one extra to know whether an older page exists.
+	decisions, _ := s.store.DecisionsPage(pageSize+1, offset)
+	hasMore := len(decisions) > pageSize
+	if hasMore {
+		decisions = decisions[:pageSize]
+	}
+
+	// Format timestamps in the configured timezone for display.
+	loc := time.UTC
+	if st, err := s.store.LoadSettings(s.defaults); err == nil {
+		if l, lerr := time.LoadLocation(st.Timezone); lerr == nil {
+			loc = l
+		}
+	}
+	type reviewRow struct {
+		store.Decision
+		When string
+	}
+	rows := make([]reviewRow, len(decisions))
+	for i, d := range decisions {
+		when := d.CreatedAt
+		if ts, err := time.Parse(time.RFC3339Nano, d.CreatedAt); err == nil {
+			when = ts.In(loc).Format("2006-01-02 15:04")
+		}
+		rows[i] = reviewRow{Decision: d, When: when}
+	}
+
 	cats, _ := s.store.Categories()
 	today, _ := s.store.LLMCallsToday()
+	prevOffset := offset - pageSize
+	if prevOffset < 0 {
+		prevOffset = 0
+	}
 	s.render(w, r, "review", "Review", "review", map[string]any{
-		"Decisions":  decisions,
+		"Decisions":  rows,
 		"Categories": cats,
 		"LLMToday":   today,
+		"HasPrev":    offset > 0,
+		"HasMore":    hasMore,
+		"PrevOffset": prevOffset,
+		"NextOffset": offset + pageSize,
+		"RangeStart": offset + 1,
+		"RangeEnd":   offset + len(rows),
 	})
 }
 

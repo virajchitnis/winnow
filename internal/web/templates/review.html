@@ -2,7 +2,7 @@
 <h1>Review</h1>
 {{with .Data}}
 <div class="stats">
-  <div class="stat"><div class="n">{{len .Decisions}}</div><div class="l">recent decisions</div></div>
+  <div class="stat"><div class="n">{{len .Decisions}}</div><div class="l">decisions shown</div></div>
   <div class="stat"><div class="n">{{.LLMToday}}</div><div class="l">LLM calls today</div></div>
 </div>
 <div class="row" style="margin:.4rem 0">
@@ -14,12 +14,13 @@
 <div class="card tablewrap">
   <table class="fixed">
     <colgroup>
-      <col style="width:34%"><col style="width:13%"><col style="width:8%">
-      <col style="width:11%"><col style="width:11%"><col style="width:23%">
+      <col style="width:12%"><col style="width:27%"><col style="width:12%"><col style="width:7%">
+      <col style="width:10%"><col style="width:10%"><col style="width:22%">
     </colgroup>
-    <tr><th>Sender / Subject</th><th>Category</th><th>Conf.</th><th>Source</th><th>Action</th><th>Re-file as</th></tr>
+    <tr><th>When</th><th>Sender / Subject</th><th>Category</th><th>Conf.</th><th>Source</th><th>Action</th><th>Re-file as</th></tr>
     {{range .Decisions}}
     <tr>
+      <td class="muted" style="font-size:.82rem">{{.When}}</td>
       <td class="grow"><div class="ell">{{.Subject}}</div><div class="ell muted" style="font-size:.82rem">{{.Sender}}</div></td>
       <td><span class="pill">{{.Category}}</span>{{if .LowConfidence}} <span class="badge warn">low</span>{{end}}</td>
       <td>{{pct .Confidence}}%</td>
@@ -37,9 +38,16 @@
       </td>
     </tr>
     {{else}}
-    <tr><td colspan="6" class="muted">No decisions yet. Winnow records them as it triages new mail.</td></tr>
+    <tr><td colspan="7" class="muted">No decisions yet. Winnow records them as it triages new mail.</td></tr>
     {{end}}
   </table>
+</div>
+<div class="row" style="justify-content:space-between;margin:.6rem 0">
+  <span class="muted">{{if .Decisions}}Showing {{.RangeStart}}–{{.RangeEnd}}{{else}}No decisions{{end}}</span>
+  <span class="row">
+    {{if .HasPrev}}<a class="btn" href="/?offset={{.PrevOffset}}">← Newer</a>{{end}}
+    {{if .HasMore}}<a class="btn" href="/?offset={{.NextOffset}}">Older →</a>{{end}}
+  </span>
 </div>
 {{end}}
 {{end}}

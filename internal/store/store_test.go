@@ -218,3 +218,31 @@ func TestDecisionsLog(t *testing.T) {
 		t.Fatalf("recent decisions = %+v", recent)
 	}
 }
+
+func TestDecisionsPage(t *testing.T) {
+	s := testStore(t)
+	for i := 0; i < 5; i++ {
+		if err := s.RecordDecision(Decision{
+			EmailID: "e" + string(rune('1'+i)), Action: "moved", Category: "Promotional",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Newest-first: first page of 2 starts at the last inserted (e5).
+	page, err := s.DecisionsPage(2, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page) != 2 || page[0].EmailID != "e5" {
+		t.Fatalf("page 0 = %+v", page)
+	}
+	// Offset 2 returns the next slice.
+	page2, _ := s.DecisionsPage(2, 2)
+	if len(page2) != 2 || page2[0].EmailID != "e3" {
+		t.Fatalf("page 1 = %+v", page2)
+	}
+	// Offset past the end is empty.
+	if p, _ := s.DecisionsPage(2, 10); len(p) != 0 {
+		t.Fatalf("expected empty tail page, got %+v", p)
+	}
+}

@@ -51,6 +51,20 @@ func (s *Store) RecentDecisions(limit int) ([]Decision, error) {
 	return scanDecisions(rows)
 }
 
+// DecisionsPage returns decisions newest-first with limit/offset, for paging
+// through the full history in the Review tab.
+func (s *Store) DecisionsPage(limit, offset int) ([]Decision, error) {
+	rows, err := s.db.Query(`
+		SELECT id, email_id, thread_id, sender, subject, category, confidence,
+			reason, summary, action, low_confidence, used_llm, created_at
+		FROM decisions ORDER BY id DESC LIMIT ? OFFSET ?`, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDecisions(rows)
+}
+
 // DecisionsSince returns decisions recorded at/after the given RFC3339 cutoff,
 // newest first — used to build the daily digest.
 func (s *Store) DecisionsSince(cutoff string) ([]Decision, error) {
