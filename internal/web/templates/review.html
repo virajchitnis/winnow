@@ -13,13 +13,27 @@
   <form class="inline" method="post" action="/action/sweep"><input type="hidden" name="apply" value="on"><button>Sweep inbox (apply)</button></form>
 </div>
 
+<form class="row" method="get" action="/" style="margin:.4rem 0">
+  <input type="text" name="q" value="{{.Q}}" placeholder="Search sender, subject, or category…" style="flex:1;min-width:180px">
+  <input type="hidden" name="sort" value="{{.Sort}}">
+  <input type="hidden" name="dir" value="{{.Dir}}">
+  <button>Search</button>
+  {{if .Q}}<a class="btn" href="{{.ClearHref}}">Clear</a>{{end}}
+</form>
+
 <div class="card tablewrap">
   <table class="fixed">
     <colgroup>
       <col style="width:11%"><col style="width:24%"><col style="width:11%"><col style="width:7%">
       <col style="width:9%"><col style="width:9%"><col style="width:29%">
     </colgroup>
-    <tr><th>When</th><th>Sender / Subject</th><th>Category</th><th>Conf.</th><th>Source</th><th>Action</th><th>Re-file as</th></tr>
+    <tr>
+      <th><a href="{{(index .Headers "date").Href}}">When{{(index .Headers "date").Arrow}}</a></th>
+      <th><a href="{{(index .Headers "sender").Href}}">Sender / Subject{{(index .Headers "sender").Arrow}}</a></th>
+      <th><a href="{{(index .Headers "category").Href}}">Category{{(index .Headers "category").Arrow}}</a></th>
+      <th><a href="{{(index .Headers "confidence").Href}}">Conf.{{(index .Headers "confidence").Arrow}}</a></th>
+      <th>Source</th><th>Action</th><th>Re-file as</th>
+    </tr>
     {{range .Decisions}}
     <tr>
       <td class="muted" style="font-size:.82rem">{{.When}}</td>
@@ -42,15 +56,15 @@
       </td>
     </tr>
     {{else}}
-    <tr><td colspan="7" class="muted">No decisions yet. Winnow records them as it triages new mail.</td></tr>
+    <tr><td colspan="7" class="muted">{{if .Q}}No decisions match “{{.Q}}”.{{else}}No decisions yet. Winnow records them as it triages new mail.{{end}}</td></tr>
     {{end}}
   </table>
 </div>
 <div class="row" style="justify-content:space-between;margin:.6rem 0">
-  <span class="muted">{{if .Decisions}}Showing {{.RangeStart}}–{{.RangeEnd}}{{else}}No decisions{{end}}</span>
+  <span class="muted">{{if .Decisions}}Showing {{.RangeStart}}–{{.RangeEnd}}{{else}}Nothing to show{{end}}</span>
   <span class="row">
-    {{if .HasPrev}}<a class="btn" href="/?offset={{.PrevOffset}}">← Newer</a>{{end}}
-    {{if .HasMore}}<a class="btn" href="/?offset={{.NextOffset}}">Older →</a>{{end}}
+    {{if .HasPrev}}<a class="btn" href="{{.PrevHref}}">← Newer</a>{{end}}
+    {{if .HasMore}}<a class="btn" href="{{.NextHref}}">Older →</a>{{end}}
   </span>
 </div>
 {{end}}

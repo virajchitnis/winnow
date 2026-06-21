@@ -106,6 +106,25 @@ func TestCorrectRecordsOverride(t *testing.T) {
 	}
 }
 
+func TestReviewSearchAndSort(t *testing.T) {
+	s, st := testServer(t)
+	h := s.Handler()
+	cookie := login(t, h)
+
+	_ = st.RecordDecision(store.Decision{EmailID: "a", Sender: "x@promo.com", Subject: "Big SALE", Category: "Promotional", Action: "moved"})
+	_ = st.RecordDecision(store.Decision{EmailID: "b", Sender: "boss@work.com", Subject: "Quarterly review", Category: "Important", Action: "flagged"})
+
+	// Search narrows to the matching row.
+	rr := getPage(t, h, cookie, "/?q=SALE&sort=confidence&dir=asc")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("review = %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "Big SALE") || strings.Contains(body, "Quarterly review") {
+		t.Errorf("search did not filter correctly")
+	}
+}
+
 func TestRefileTeachesAndMovesAndLogs(t *testing.T) {
 	s, st := testServer(t)
 	h := s.Handler()

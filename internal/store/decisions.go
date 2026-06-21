@@ -1,5 +1,7 @@
 package store
 
+import "fmt"
+
 // Decision is one classification outcome recorded in the log.
 type Decision struct {
 	ID            int64
@@ -69,13 +71,51 @@ func (s *Store) DecisionStats() (DecisionStats, error) {
 	return d, err
 }
 
-// DecisionsPage returns decisions newest-first with limit/offset, for paging
-// through the full history in the Review tab.
-func (s *Store) DecisionsPage(limit, offset int) ([]Decision, error) {
-	rows, err := s.db.Query(`
+// DecisionQuery filters, orders, and pages the decision log for the Review tab.
+type DecisionQuery struct {
+	Search string // substring match on sender, subject, or category (case-insensitive)
+	Sort   string // date | confidence | category | sender (default date)
+	Desc   bool
+	Limit  int
+	Offset int
+}
+
+// SortableDecisionColumns whitelists sortable columns so the user-supplied sort
+// key can never be injected into the SQL.
+var SortableDecisionColumns = map[string]string{
+	"date":       "created_at",
+	"confidence": "confidence",
+	"category":   "category",
+	"sender":     "sender",
+}
+
+// QueryDecisions returns decisions matching the query, ordered and paged. Both
+// the sort column (whitelisted) and direction are validated before use; the
+// search term is always parameterized.
+func (s *Store) QueryDecisions(q DecisionQuery) ([]Decision, error) {
+	col, ok := SortableDecisionColumns[q.Sort]
+	if !ok {
+		col = "created_at"
+	}
+	dir := "ASC"
+	if q.Desc {
+		dir = "DESC"
+	}
+	var where string
+	args := []any{}
+	if q.Search != "" {
+		where = "WHERE sender LIKE ? OR subject LIKE ? OR category LIKE ?"
+		like := "%" + q.Search + "%"
+		args = append(args, like, like, like)
+	}
+	query := fmt.Sprintf(`
 		SELECT id, email_id, thread_id, sender, subject, category, confidence,
 			reason, summary, action, low_confidence, used_llm, created_at
-		FROM decisions ORDER BY id DESC LIMIT ? OFFSET ?`, limit, offset)
+		FROM decisions %s
+		ORDER BY %s %s, id DESC
+		LIMIT ? OFFSET ?`, where, col, dir)
+	args = append(args, q.Limit, q.Offset)
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

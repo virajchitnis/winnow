@@ -219,7 +219,7 @@ func TestDecisionsLog(t *testing.T) {
 	}
 }
 
-func TestDecisionsPage(t *testing.T) {
+func TestQueryDecisions(t *testing.T) {
 	s := testStore(t)
 	for i := 0; i < 5; i++ {
 		if err := s.RecordDecision(Decision{
@@ -228,21 +228,39 @@ func TestDecisionsPage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Newest-first: first page of 2 starts at the last inserted (e5).
-	page, err := s.DecisionsPage(2, 0)
+
+	// Default date sort, newest-first, paged.
+	page, err := s.QueryDecisions(DecisionQuery{Sort: "date", Desc: true, Limit: 2, Offset: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(page) != 2 || page[0].EmailID != "e5" {
 		t.Fatalf("page 0 = %+v", page)
 	}
-	// Offset 2 returns the next slice.
-	page2, _ := s.DecisionsPage(2, 2)
-	if len(page2) != 2 || page2[0].EmailID != "e3" {
-		t.Fatalf("page 1 = %+v", page2)
+	if p2, _ := s.QueryDecisions(DecisionQuery{Sort: "date", Desc: true, Limit: 2, Offset: 2}); len(p2) != 2 || p2[0].EmailID != "e3" {
+		t.Fatalf("page 1 = %+v", p2)
 	}
-	// Offset past the end is empty.
-	if p, _ := s.DecisionsPage(2, 10); len(p) != 0 {
-		t.Fatalf("expected empty tail page, got %+v", p)
+
+	// Confidence sort ascending orders by the confidence column.
+	_ = s.RecordDecision(Decision{EmailID: "hi", Category: "Promotional", Action: "moved", Confidence: 0.9})
+	_ = s.RecordDecision(Decision{EmailID: "lo", Category: "Promotional", Action: "moved", Confidence: 0.1})
+	asc, _ := s.QueryDecisions(DecisionQuery{Sort: "confidence", Desc: false, Limit: 100})
+	if asc[0].Confidence > asc[len(asc)-1].Confidence {
+		t.Errorf("confidence asc not ordered: %v..%v", asc[0].Confidence, asc[len(asc)-1].Confidence)
+	}
+
+	// Search matches subject/sender/category (case-insensitive).
+	_ = s.RecordDecision(Decision{EmailID: "s1", Sender: "deals@shop.com", Subject: "Big SALE today", Category: "Promotional", Action: "moved"})
+	hits, _ := s.QueryDecisions(DecisionQuery{Search: "sale", Limit: 100})
+	if len(hits) != 1 || hits[0].EmailID != "s1" {
+		t.Fatalf("search 'sale' = %+v", hits)
+	}
+	if got, _ := s.QueryDecisions(DecisionQuery{Search: "shop.com", Limit: 100}); len(got) != 1 {
+		t.Errorf("search by sender should match, got %d", len(got))
+	}
+
+	// Unknown sort key falls back to date (no error, returns rows).
+	if rows, err := s.QueryDecisions(DecisionQuery{Sort: "bogus", Limit: 100}); err != nil || len(rows) == 0 {
+		t.Fatalf("fallback sort failed: %v rows=%d", err, len(rows))
 	}
 }

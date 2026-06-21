@@ -54,12 +54,31 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	const pageSize = 50
+	q := r.URL.Query()
 	offset := 0
-	if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
+	if n, err := strconv.Atoi(q.Get("offset")); err == nil && n > 0 {
 		offset = n
 	}
+	search := strings.TrimSpace(q.Get("q"))
+	sortKey := q.Get("sort")
+	if _, ok := store.SortableDecisionColumns[sortKey]; !ok {
+		sortKey = "date"
+	}
+	// Default direction: newest/highest first for date & confidence, A–Z for text.
+	var desc bool
+	switch q.Get("dir") {
+	case "asc":
+		desc = false
+	case "desc":
+		desc = true
+	default:
+		desc = sortKey == "date" || sortKey == "confidence"
+	}
+
 	// Fetch one extra to know whether an older page exists.
-	decisions, _ := s.store.DecisionsPage(pageSize+1, offset)
+	decisions, _ := s.store.QueryDecisions(store.DecisionQuery{
+		Search: search, Sort: sortKey, Desc: desc, Limit: pageSize + 1, Offset: offset,
+	})
 	hasMore := len(decisions) > pageSize
 	if hasMore {
 		decisions = decisions[:pageSize]
@@ -85,13 +104,59 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		rows[i] = reviewRow{Decision: d, When: when}
 	}
 
+	dirStr := "asc"
+	if desc {
+		dirStr = "desc"
+	}
+	// link builds a Review URL preserving the active search, overlaying params.
+	link := func(over map[string]string) string {
+		v := url.Values{}
+		if search != "" {
+			v.Set("q", search)
+		}
+		v.Set("sort", sortKey)
+		v.Set("dir", dirStr)
+		for k, val := range over {
+			if val == "" {
+				v.Del(k)
+			} else {
+				v.Set(k, val)
+			}
+		}
+		return "/?" + v.Encode()
+	}
+	// Clickable, toggling column headers (clicking resets to the first page).
+	type sortHdr struct{ Href, Arrow string }
+	headers := map[string]sortHdr{}
+	for _, key := range []string{"date", "sender", "category", "confidence"} {
+		nextDesc := key == "date" || key == "confidence"
+		if sortKey == key {
+			nextDesc = !desc // toggle when re-clicking the active column
+		}
+		nd := "asc"
+		if nextDesc {
+			nd = "desc"
+		}
+		v := url.Values{}
+		if search != "" {
+			v.Set("q", search)
+		}
+		v.Set("sort", key)
+		v.Set("dir", nd)
+		arrow := ""
+		if sortKey == key {
+			if desc {
+				arrow = " ▼"
+			} else {
+				arrow = " ▲"
+			}
+		}
+		headers[key] = sortHdr{Href: "/?" + v.Encode(), Arrow: arrow}
+	}
+
 	cats, _ := s.store.Categories()
 	today, _ := s.store.LLMCallsToday()
 	stats, _ := s.store.DecisionStats()
-	prevOffset := offset - pageSize
-	if prevOffset < 0 {
-		prevOffset = 0
-	}
 	s.render(w, r, "review", "Review", "review", map[string]any{
 		"Decisions":     rows,
 		"Categories":    cats,
@@ -99,13 +164,25 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		"Total":         stats.Total,
 		"LowConfidence": stats.LowConfidence,
 		"UsedLLM":       stats.UsedLLM,
+		"Q":             search,
+		"Sort":          sortKey,
+		"Dir":           dirStr,
+		"Headers":       headers,
 		"HasPrev":       offset > 0,
 		"HasMore":       hasMore,
-		"PrevOffset":    prevOffset,
-		"NextOffset":    offset + pageSize,
+		"PrevHref":      link(map[string]string{"offset": strconv.Itoa(maxInt(offset-pageSize, 0))}),
+		"NextHref":      link(map[string]string{"offset": strconv.Itoa(offset + pageSize)}),
+		"ClearHref":     link(map[string]string{"q": "", "offset": ""}),
 		"RangeStart":    offset + 1,
 		"RangeEnd":      offset + len(rows),
 	})
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // teach records a correction as a sender observation so the classifier learns,
