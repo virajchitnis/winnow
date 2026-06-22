@@ -36,6 +36,7 @@ self-hosted via Docker.
   navigations into in-place AJAX swaps — no SPA, no JSON API. Controls carry
   `data-testid` hooks for the e2e suite.
 - `internal/digest/`, `internal/sieve/`, `internal/unsubscribe/`, `internal/retry/`.
+- `e2e/` — browser regression suite (build tag `e2e`, Playwright); see Build/test.
 - `docs/` — GitHub Pages site (`index.html` + `guide.html`, the user guide).
 
 ## Key behaviors to preserve

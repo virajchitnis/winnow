@@ -27,9 +27,11 @@ over time. The name comes from *winnowing*: separating the grain from the chaff.
 - **Daily digest** of what was filed and what needs you (doubles as a heartbeat).
 - **A small web dashboard** to review/correct decisions and tune everything,
   reachable privately over Tailscale and (optionally) via a Cloudflare Tunnel.
-  The Review tab is searchable and sortable, shows whether each decision came
-  from a free heuristic or from Claude, and lets you **Teach** (learn a sender)
-  or **Move & teach** (also re-file that email) per row.
+  Server-rendered with a tiny self-hosted [htmx](https://htmx.org) for snappy
+  in-place navigation (no SPA, no JSON API, no external calls). The Review tab is
+  searchable and sortable, shows whether each decision came from a free heuristic
+  or from Claude, and lets you **Teach** (learn a sender) or **Move & teach**
+  (also re-file that email) per row.
 - **One-time inbox sweep.** Preview classifications for your whole existing inbox
   (a side-effect-free dry read you can re-run), then either **apply the reviewed
   decisions** (file them using the categories you already saw — no new API calls)
