@@ -46,7 +46,21 @@ func TestAuthGate(t *testing.T) {
 	}
 }
 
-// rowSelect targets a control within a specific decision row (by email id).
+func TestProtectedRouteRequiresSession(t *testing.T) {
+	h := newHarness(t)
+	page := newPage(t) // no login
+
+	// A protected tab should bounce an unauthenticated visitor to the login form.
+	gotoTab(t, page, h.ts.URL, "/settings")
+	if err := page.Locator(testid("login-password")).WaitFor(); err != nil {
+		t.Fatalf("protected route should redirect to login: %v", err)
+	}
+	if n, _ := page.Locator(testid("set-save")).Count(); n != 0 {
+		t.Error("settings content must not be reachable without a session")
+	}
+}
+
+// rowLocator targets a control within a specific decision row (by email id).
 func rowLocator(page playwright.Page, emailID, tid string) playwright.Locator {
 	return page.Locator(`tr[data-email="` + emailID + `"]`).Locator(testid(tid))
 }

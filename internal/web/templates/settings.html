@@ -8,7 +8,7 @@
       <label>Poll interval <input type="text" name="poll_interval" value="{{$s.PollInterval}}"></label>
       <label>Digest hour (0–23) <input type="number" name="digest_hour" min="0" max="23" value="{{$s.DigestHour}}"></label>
       <label>Timezone <input type="text" name="timezone" value="{{$s.Timezone}}"></label>
-      <label>Confidence threshold <input type="text" name="confidence_threshold" value="{{$s.ConfidenceThreshold}}"></label>
+      <label>Confidence threshold <input type="text" name="confidence_threshold" value="{{$s.ConfidenceThreshold}}" data-testid="set-confidence"></label>
       <label>Daily LLM-call cap <input type="number" name="llm_daily_cap" min="0" value="{{$s.LLMDailyCap}}"></label>
       <label>Decision log retention (days, 0 = keep forever) <input type="number" name="decision_retention_days" min="0" value="{{$s.DecisionRetentionDays}}"></label>
       <label>Unsubscribe verify window (days) <input type="number" name="unsub_verify_window_days" min="1" value="{{$s.UnsubVerifyWindowDays}}"></label>
@@ -23,28 +23,28 @@
       </label>
     </div>
     <p>
-      <label class="muted"><input type="checkbox" name="dry_run" {{if $s.DryRun}}checked{{end}}> dry-run (don't move mail)</label>
+      <label class="muted"><input type="checkbox" name="dry_run" {{if $s.DryRun}}checked{{end}} data-testid="set-dryrun"> dry-run (don't move mail)</label>
       &nbsp;&nbsp;
       <label class="muted"><input type="checkbox" name="digest_enabled" {{if $s.DigestEnabled}}checked{{end}}> daily digest</label>
     </p>
-    <button class="primary">Save settings</button>
+    <button class="primary" data-testid="set-save">Save settings</button>
   </form>
 </div>
 
 <div class="card">
   <h2>Diagnostics</h2>
   <div class="row">
-    <form class="inline" method="post" action="/action/test"><button name="service" value="fastmail">Test Fastmail</button></form>
-    <form class="inline" method="post" action="/action/test"><button name="service" value="anthropic">Test Anthropic</button></form>
+    <form class="inline" method="post" action="/action/test"><button name="service" value="fastmail" data-testid="test-fastmail">Test Fastmail</button></form>
+    <form class="inline" method="post" action="/action/test"><button name="service" value="anthropic" data-testid="test-anthropic">Test Anthropic</button></form>
   </div>
 </div>
 
 <div class="card">
   <h2>Change password</h2>
   <form method="post" action="/action/password" class="row">
-    <input type="password" name="current" placeholder="Current password" required>
-    <input type="password" name="new" placeholder="New password (min 8)" required>
-    <button>Change</button>
+    <input type="password" name="current" placeholder="Current password" required data-testid="pw-current">
+    <input type="password" name="new" placeholder="New password (min 8)" required data-testid="pw-new">
+    <button data-testid="pw-change">Change</button>
   </form>
   <p class="muted" style="font-size:.84rem">API tokens and secrets are configured via the server environment and are never shown or editable here.</p>
 </div>

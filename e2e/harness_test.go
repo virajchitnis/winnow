@@ -186,6 +186,19 @@ func withUnsub(e *unsubscribe.Executor) harnessOpt {
 	return func(d *web.Deps) { d.Unsub = e }
 }
 
+// fakePinger is a web.Pinger that returns a fixed result.
+type fakePinger struct{ err error }
+
+func (p fakePinger) Ping(context.Context) error { return p.err }
+
+// withPingers injects connection-test pingers (for the Diagnostics buttons).
+func withPingers(fastmail, anthropic error) harnessOpt {
+	return func(d *web.Deps) {
+		d.FastmailPing = fakePinger{err: fastmail}
+		d.AnthropicPing = fakePinger{err: anthropic}
+	}
+}
+
 // newHarness wires a real store + real scheduler (fake JMAP/classifier) behind
 // the dashboard and starts an httptest server.
 func newHarness(t *testing.T, opts ...harnessOpt) *harness {
@@ -200,6 +213,9 @@ func newHarness(t *testing.T, opts ...harnessOpt) *harness {
 		DryRun: true, Timezone: "UTC", PollInterval: 15 * time.Minute,
 		ConfidenceThreshold: 0.75, LLMDailyCap: 10000,
 		Model: "claude-haiku-4-5", Privacy: config.PrivacySnippet,
+		// Mirror the real env defaults so the Settings form renders valid values
+		// (UnsubVerifyWindowDays has a min=1 constraint that would block submit).
+		DecisionRetentionDays: 90, UnsubVerifyWindowDays: 14,
 	}
 	if err := st.SeedSettings(defaults); err != nil {
 		t.Fatalf("seed settings: %v", err)
