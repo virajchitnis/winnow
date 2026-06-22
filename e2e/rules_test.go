@@ -26,12 +26,12 @@ func TestRuleApprove(t *testing.T) {
 	if err := ruleRow(page, "shop.example").Locator(testid("rule-approve")).Click(); err != nil {
 		t.Fatalf("click approve: %v", err)
 	}
-	// Approved count reflects the decision.
-	if err := page.Locator(testid("approved-count")).WaitFor(); err != nil {
-		t.Fatal(err)
-	}
-	approved, _ := h.store.SieveCandidates(store.SieveApproved)
-	if len(approved) != 1 || approved[0].Domain != "shop.example" {
+	// htmx submits async; poll the store for the approval.
+	if !eventually(t, 5*time.Second, func() bool {
+		approved, _ := h.store.SieveCandidates(store.SieveApproved)
+		return len(approved) == 1 && approved[0].Domain == "shop.example"
+	}) {
+		approved, _ := h.store.SieveCandidates(store.SieveApproved)
 		t.Errorf("candidate not approved: %+v", approved)
 	}
 }

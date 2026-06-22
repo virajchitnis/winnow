@@ -28,9 +28,13 @@ self-hosted via Docker.
   sweep, daily digest + maintenance, single-flight run lock. `Refile` re-files a
   single email on demand; `ApplyReviewed` files previewed mail from the decision
   log (no re-classification).
-- `internal/web/` — dashboard (server-rendered `html/template`, no SPA): Review,
+- `internal/web/` — dashboard (server-rendered `html/template`): Review,
   Categories, Senders, Rules, Unsubscribe, Settings; password auth + session;
-  Cloudflare Access JWT middleware; `/healthz`.
+  Cloudflare Access JWT middleware; `/healthz`. Still server-rendered (handlers
+  return full pages + redirect-with-flash), but vendored **htmx** (embedded under
+  `static/`, served at `/static/`) with `hx-boost` on `<body>` turns link/form
+  navigations into in-place AJAX swaps — no SPA, no JSON API. Controls carry
+  `data-testid` hooks for the e2e suite.
 - `internal/digest/`, `internal/sieve/`, `internal/unsubscribe/`, `internal/retry/`.
 - `docs/` — GitHub Pages site (`index.html` + `guide.html`, the user guide).
 

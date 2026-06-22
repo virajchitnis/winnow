@@ -19,7 +19,7 @@
       <td data-testid="unsub-status">{{.Status}}{{if and (eq .Status "unsubscribed") (not .Verified)}} <span class="badge warn">still arriving</span>{{end}}</td>
       <td>
         {{if eq .Method "http_manual"}}
-          <a class="btn" href="{{.Target}}" target="_blank" rel="noopener noreferrer" data-testid="unsub-open">Open link</a>
+          <a class="btn" href="{{.Target}}" target="_blank" rel="noopener noreferrer" hx-boost="false" data-testid="unsub-open">Open link</a>
         {{else}}
           <form class="inline" method="post" action="/action/unsub"><input type="hidden" name="sender" value="{{.Sender}}"><button name="choice" value="unsubscribe" data-testid="unsub-do">Unsubscribe</button></form>
         {{end}}

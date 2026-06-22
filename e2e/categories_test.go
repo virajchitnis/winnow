@@ -47,13 +47,13 @@ func TestCategoryEdit(t *testing.T) {
 	if err := catRow(page, "Promotional").Locator(testid("cat-row-save")).Click(); err != nil {
 		t.Fatal(err)
 	}
-	// Wait for reload, then confirm persistence.
-	if err := catRow(page, "Promotional").WaitFor(); err != nil {
-		t.Fatal(err)
-	}
-	cat, ok, _ := h.store.CategoryByName("Promotional")
-	if !ok || cat.DestinationFolder != "PromosRenamed" {
-		t.Errorf("edit not persisted: %+v ok=%v", cat, ok)
+	// htmx submits async; poll the store for the persisted change.
+	if !eventually(t, 5*time.Second, func() bool {
+		cat, ok, _ := h.store.CategoryByName("Promotional")
+		return ok && cat.DestinationFolder == "PromosRenamed"
+	}) {
+		cat, _, _ := h.store.CategoryByName("Promotional")
+		t.Errorf("edit not persisted: %+v", cat)
 	}
 }
 

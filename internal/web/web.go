@@ -8,6 +8,7 @@ import (
 	"context"
 	"embed"
 	"html/template"
+	"io/fs"
 	"net/http"
 
 	"winnow/internal/config"
@@ -20,6 +21,9 @@ import (
 
 //go:embed templates/*.html
 var templatesFS embed.FS
+
+//go:embed static/*
+var staticFS embed.FS
 
 // Scheduler is the control surface the dashboard drives.
 type Scheduler interface {
@@ -96,6 +100,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealthz)
 	mux.HandleFunc("/login", s.handleLogin)
 	mux.HandleFunc("/logout", s.handleLogout)
+	// Static assets (vendored htmx) — public so the login page can load them.
+	if sub, err := fs.Sub(staticFS, "static"); err == nil {
+		mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(sub))))
+	}
 
 	// Authenticated pages.
 	mux.HandleFunc("/", s.requireAuth(s.handleReview))

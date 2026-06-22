@@ -51,13 +51,9 @@ func TestUnsubscribeStatusFilter(t *testing.T) {
 	gotoTab(t, page, h.ts.URL, "/unsubscribe")
 
 	// All shows both; the Kept filter shows only the kept one.
-	if n, _ := page.Locator(testid("unsub-row")).Count(); n != 2 {
-		t.Errorf("All should show 2 rows, got %d", n)
-	}
+	expectCount(t, page, "unsub-row", 2)
 	mustClick(t, page, "filter-kept")
-	if n, _ := page.Locator(testid("unsub-row")).Count(); n != 1 {
-		t.Fatalf("Kept filter should show 1 row, got %d", n)
-	}
+	expectCount(t, page, "unsub-row", 1)
 	if err := unsubRow(page, "kept@a.example").WaitFor(); err != nil {
 		t.Errorf("kept sender should be the one shown: %v", err)
 	}

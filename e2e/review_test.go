@@ -35,9 +35,7 @@ func TestReviewListAndSearch(t *testing.T) {
 	// Search narrows to the match.
 	mustFill(t, page, "search-input", "SALE")
 	mustClick(t, page, "search-btn")
-	if n, _ := page.Locator(testid("row")).Count(); n != 1 {
-		t.Errorf("search should leave 1 row, got %d", n)
-	}
+	expectCount(t, page, "row", 1)
 	if txt := text(t, rowLocator(page, "a", "row-category")); txt != "Promotional" {
 		t.Errorf("unexpected surviving row category %q", txt)
 	}
@@ -51,9 +49,7 @@ func TestReviewListAndSearch(t *testing.T) {
 
 	// Clear restores the full list.
 	mustClick(t, page, "search-clear")
-	if n, _ := page.Locator(testid("row")).Count(); n != 2 {
-		t.Errorf("clear should restore 2 rows, got %d", n)
-	}
+	expectCount(t, page, "row", 2)
 }
 
 func TestReviewStats(t *testing.T) {
@@ -86,17 +82,13 @@ func TestReviewSortToggle(t *testing.T) {
 
 	// Default confidence sort is descending (highest first).
 	mustClick(t, page, "sort-confidence")
-	if !strings.Contains(text(t, page.Locator(testid("sort-confidence"))), "▼") {
-		t.Errorf("expected a descending arrow after first click")
-	}
+	waitTestidText(t, page, "sort-confidence", "▼")
 	if first := firstRowEmail(t, page); first != "hi" {
 		t.Errorf("desc sort should put hi first, got %q", first)
 	}
 	// Clicking again flips to ascending.
 	mustClick(t, page, "sort-confidence")
-	if !strings.Contains(text(t, page.Locator(testid("sort-confidence"))), "▲") {
-		t.Errorf("expected an ascending arrow after second click")
-	}
+	waitTestidText(t, page, "sort-confidence", "▲")
 	if first := firstRowEmail(t, page); first != "lo" {
 		t.Errorf("asc sort should put lo first, got %q", first)
 	}
@@ -112,16 +104,12 @@ func TestReviewPagination(t *testing.T) {
 	page := newPage(t)
 	login(t, page, h.ts.URL)
 
-	if n, _ := page.Locator(testid("row")).Count(); n != 50 {
-		t.Errorf("page 1 should show 50 rows, got %d", n)
-	}
+	expectCount(t, page, "row", 50)
 	if n, _ := page.Locator(testid("page-newer")).Count(); n != 0 {
 		t.Error("page 1 should not offer Newer")
 	}
 	mustClick(t, page, "page-older")
-	if n, _ := page.Locator(testid("row")).Count(); n != 10 {
-		t.Errorf("page 2 should show the remaining 10 rows, got %d", n)
-	}
+	expectCount(t, page, "row", 10)
 	if n, _ := page.Locator(testid("page-newer")).Count(); n != 1 {
 		t.Error("page 2 should offer Newer")
 	}
@@ -138,10 +126,12 @@ func TestReviewTeachSoft(t *testing.T) {
 	if err := rowLocator(page, "a", "row-teach").Click(); err != nil {
 		t.Fatalf("click Teach: %v", err)
 	}
-	mustWaitDashboard(t, page)
-
-	if n, _ := h.store.DomainCategoryCount("shop.example", "Important"); n != 1 {
-		t.Errorf("Teach should record one observation, got %d", n)
+	// The submit is an async htmx swap; poll the store for the effect.
+	if !eventually(t, 5*time.Second, func() bool {
+		n, _ := h.store.DomainCategoryCount("shop.example", "Important")
+		return n == 1
+	}) {
+		t.Error("Teach should record one observation")
 	}
 	if _, _, ok := h.store.SenderOverride("deals@shop.example", "shop.example"); ok {
 		t.Error("Teach must not create a blanket sender rule")
@@ -160,11 +150,11 @@ func TestReviewMoveAndTeachMovesMail(t *testing.T) {
 	if err := rowLocator(page, "a", "row-move-teach").Click(); err != nil {
 		t.Fatalf("click Move & teach: %v", err)
 	}
-	mustWaitDashboard(t, page)
-
-	// Refile is synchronous, so the move has landed by the redirect.
-	if mb := h.jmap.mailboxOf("a"); !mb["mb-Promotions"] {
-		t.Errorf("email should be in Promotions, got %v", mb)
+	// htmx submits async; poll until the refile has landed.
+	if !eventually(t, 5*time.Second, func() bool {
+		return h.jmap.mailboxOf("a")["mb-Promotions"]
+	}) {
+		t.Errorf("email should be in Promotions, got %v", h.jmap.mailboxOf("a"))
 	}
 	if n, _ := h.store.DomainCategoryCount("shop.example", "Promotional"); n != 1 {
 		t.Errorf("Move & teach should also record an observation, got %d", n)
@@ -277,6 +267,31 @@ func text(t *testing.T, loc playwright.Locator) string {
 		t.Fatalf("text content: %v", err)
 	}
 	return strings.TrimSpace(s)
+}
+
+// expectCount waits for a testid to resolve to exactly want elements. With
+// hx-boost, navigations are async swaps, so a one-shot Count can race the swap.
+func expectCount(t *testing.T, page playwright.Page, tid string, want int) {
+	t.Helper()
+	ok := eventually(t, 5*time.Second, func() bool {
+		n, _ := page.Locator(testid(tid)).Count()
+		return n == want
+	})
+	if !ok {
+		n, _ := page.Locator(testid(tid)).Count()
+		t.Fatalf("want %d %q elements, got %d", want, tid, n)
+	}
+}
+
+// waitTestidText waits until a testid's text contains substr.
+func waitTestidText(t *testing.T, page playwright.Page, tid, substr string) {
+	t.Helper()
+	ok := eventually(t, 5*time.Second, func() bool {
+		return strings.Contains(text(t, page.Locator(testid(tid))), substr)
+	})
+	if !ok {
+		t.Fatalf("%q never contained %q (got %q)", tid, substr, text(t, page.Locator(testid(tid))))
+	}
 }
 
 func firstRowEmail(t *testing.T, page playwright.Page) string {

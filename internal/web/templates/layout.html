@@ -46,8 +46,9 @@
   .stat .l{font-size:.78rem;color:var(--muted)}
   form.inline{display:inline}
 </style>
+<script src="/static/htmx.min.js"></script>
 </head>
-<body>
+<body hx-boost="true">
 {{if .Authed}}
 <header>
   <div class="bar">
