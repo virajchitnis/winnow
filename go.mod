@@ -3,14 +3,18 @@ module winnow
 go 1.23
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/playwright-community/playwright-go v0.5700.1
 	golang.org/x/crypto v0.31.0
 	golang.org/x/term v0.27.0
 	modernc.org/sqlite v1.34.4
 )
 
 require (
+	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

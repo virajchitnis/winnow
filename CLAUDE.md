@@ -79,6 +79,13 @@ binary directly):
 - `make vet` / `make fmtcheck` — CI also runs `go vet` and `gofmt`; run
   `gofmt -w` before committing.
 - `make all` — fmtcheck + vet + race + cover (what to run before pushing).
+- **Browser E2E** (`e2e/`, build tag `e2e`, Playwright via `playwright-go`):
+  `go test -tags e2e ./e2e/...` after `playwright install --with-deps chromium`.
+  Drives the dashboard headless against an in-process server (real SQLite, fake
+  scheduler). Excluded from the default suite/coverage; runs in its own CI job.
+  To run it without a local browser, use a container, e.g.:
+  `docker run --rm -v "$PWD":/src -w /src golang:1.26-bookworm bash -c \
+   'go run github.com/playwright-community/playwright-go/cmd/playwright install --with-deps chromium && go test -tags e2e ./e2e/...'`
 
 No Go is required to *run* Winnow — builds happen inside Docker
 (`docker compose up -d --build`). The dashboard binds `0.0.0.0:8080` in the

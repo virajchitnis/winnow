@@ -39,10 +39,11 @@ jobs:
           go-version: "1.26"
           cache: true
       - name: install playwright browser
-        run: |
-          go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps chromium || true
+        # Use the module-pinned CLI (no @latest) so the driver matches the
+        # playwright-go version in go.mod.
+        run: go run github.com/playwright-community/playwright-go/cmd/playwright install --with-deps chromium
       - name: e2e
-        run: go test -tags e2e ./e2e/... || echo "e2e tests not present yet"
+        run: go test -tags e2e ./e2e/...
 
   docker:
     name: docker build
