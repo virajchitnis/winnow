@@ -25,6 +25,7 @@ import (
 	"winnow/internal/jmap"
 	"winnow/internal/schedule"
 	"winnow/internal/store"
+	"winnow/internal/unsubscribe"
 	"winnow/internal/web"
 )
 
@@ -177,9 +178,17 @@ type harness struct {
 	jmap  *fakeJMAP
 }
 
+// harnessOpt customizes the harness wiring.
+type harnessOpt func(*web.Deps)
+
+// withUnsub injects an unsubscribe executor (for the One-Click execute test).
+func withUnsub(e *unsubscribe.Executor) harnessOpt {
+	return func(d *web.Deps) { d.Unsub = e }
+}
+
 // newHarness wires a real store + real scheduler (fake JMAP/classifier) behind
 // the dashboard and starts an httptest server.
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T, opts ...harnessOpt) *harness {
 	t.Helper()
 	st, err := store.Open(t.TempDir() + "/e2e.db")
 	if err != nil {
@@ -210,7 +219,11 @@ func newHarness(t *testing.T) *harness {
 	cfg := &config.Config{
 		AppPasswordHash: string(hash), SessionSecret: "e2e-session-secret", Defaults: defaults,
 	}
-	srv, err := web.New(web.Deps{Store: st, Scheduler: sched, Config: cfg})
+	deps := web.Deps{Store: st, Scheduler: sched, Config: cfg}
+	for _, o := range opts {
+		o(&deps)
+	}
+	srv, err := web.New(deps)
 	if err != nil {
 		t.Fatalf("web.New: %v", err)
 	}
