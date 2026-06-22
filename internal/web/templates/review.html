@@ -2,24 +2,24 @@
 <h1>Review</h1>
 {{with .Data}}
 <div class="stats">
-  <div class="stat"><div class="n">{{.Total}}</div><div class="l">total decisions</div></div>
-  <div class="stat"><div class="n">{{.LowConfidence}}</div><div class="l">low-confidence (kept)</div></div>
-  <div class="stat"><div class="n">{{.UsedLLM}}</div><div class="l">classified by Claude</div></div>
-  <div class="stat"><div class="n">{{.LLMToday}}</div><div class="l">LLM calls today</div></div>
+  <div class="stat"><div class="n" data-testid="stat-total">{{.Total}}</div><div class="l">total decisions</div></div>
+  <div class="stat"><div class="n" data-testid="stat-low">{{.LowConfidence}}</div><div class="l">low-confidence (kept)</div></div>
+  <div class="stat"><div class="n" data-testid="stat-claude">{{.UsedLLM}}</div><div class="l">classified by Claude</div></div>
+  <div class="stat"><div class="n" data-testid="stat-llm-today">{{.LLMToday}}</div><div class="l">LLM calls today</div></div>
 </div>
 <div class="row" style="margin:.4rem 0">
-  <form class="inline" method="post" action="/action/run"><button>Run triage now</button></form>
-  <form class="inline" method="post" action="/action/sweep"><button name="apply" value="">Sweep inbox (preview)</button></form>
-  <form class="inline" method="post" action="/action/sweep"><input type="hidden" name="apply" value="on"><button>Sweep inbox (apply)</button></form>
-  <form class="inline" method="post" action="/action/apply-reviewed"><button title="File the previewed mail using the categories you already reviewed — no new Claude calls">Apply reviewed decisions</button></form>
+  <form class="inline" method="post" action="/action/run"><button data-testid="btn-run">Run triage now</button></form>
+  <form class="inline" method="post" action="/action/sweep"><button data-testid="btn-sweep-preview" name="apply" value="">Sweep inbox (preview)</button></form>
+  <form class="inline" method="post" action="/action/sweep"><input type="hidden" name="apply" value="on"><button data-testid="btn-sweep-apply">Sweep inbox (apply)</button></form>
+  <form class="inline" method="post" action="/action/apply-reviewed"><button data-testid="btn-apply-reviewed" title="File the previewed mail using the categories you already reviewed — no new Claude calls">Apply reviewed decisions</button></form>
 </div>
 
 <form class="row" method="get" action="/" style="margin:.4rem 0">
-  <input type="text" name="q" value="{{.Q}}" placeholder="Search sender, subject, or category…" style="flex:1;min-width:180px">
+  <input type="text" name="q" value="{{.Q}}" placeholder="Search sender, subject, or category…" style="flex:1;min-width:180px" data-testid="search-input">
   <input type="hidden" name="sort" value="{{.Sort}}">
   <input type="hidden" name="dir" value="{{.Dir}}">
-  <button>Search</button>
-  {{if .Q}}<a class="btn" href="{{.ClearHref}}">Clear</a>{{end}}
+  <button data-testid="search-btn">Search</button>
+  {{if .Q}}<a class="btn" href="{{.ClearHref}}" data-testid="search-clear">Clear</a>{{end}}
 </form>
 
 <div class="card tablewrap">
@@ -29,43 +29,43 @@
       <col style="width:9%"><col style="width:9%"><col style="width:29%">
     </colgroup>
     <tr>
-      <th><a href="{{(index .Headers "date").Href}}">When{{(index .Headers "date").Arrow}}</a></th>
-      <th><a href="{{(index .Headers "sender").Href}}">Sender / Subject{{(index .Headers "sender").Arrow}}</a></th>
-      <th><a href="{{(index .Headers "category").Href}}">Category{{(index .Headers "category").Arrow}}</a></th>
-      <th><a href="{{(index .Headers "confidence").Href}}">Conf.{{(index .Headers "confidence").Arrow}}</a></th>
+      <th><a href="{{(index .Headers "date").Href}}" data-testid="sort-date">When{{(index .Headers "date").Arrow}}</a></th>
+      <th><a href="{{(index .Headers "sender").Href}}" data-testid="sort-sender">Sender / Subject{{(index .Headers "sender").Arrow}}</a></th>
+      <th><a href="{{(index .Headers "category").Href}}" data-testid="sort-category">Category{{(index .Headers "category").Arrow}}</a></th>
+      <th><a href="{{(index .Headers "confidence").Href}}" data-testid="sort-confidence">Conf.{{(index .Headers "confidence").Arrow}}</a></th>
       <th>Source</th><th>Action</th><th>Re-file as</th>
     </tr>
     {{range .Decisions}}
-    <tr>
+    <tr data-testid="row" data-email="{{.EmailID}}">
       <td class="muted" style="font-size:.82rem">{{.When}}</td>
       <td class="grow"><div class="ell">{{.Subject}}</div><div class="ell muted" style="font-size:.82rem">{{.Sender}}</div></td>
-      <td><span class="pill">{{.Category}}</span>{{if .LowConfidence}} <span class="badge warn">low</span>{{end}}</td>
+      <td><span class="pill" data-testid="row-category">{{.Category}}</span>{{if .LowConfidence}} <span class="badge warn">low</span>{{end}}</td>
       <td>{{pct .Confidence}}%</td>
-      <td class="muted">{{if .UsedLLM}}Claude{{else}}heuristic{{end}}</td>
-      <td class="muted">{{.Action}}</td>
+      <td class="muted" data-testid="row-source">{{if .UsedLLM}}Claude{{else}}heuristic{{end}}</td>
+      <td class="muted" data-testid="row-action">{{.Action}}</td>
       <td>
         <form class="inline" method="post" action="/action/correct">
           <input type="hidden" name="email_id" value="{{.EmailID}}">
           <input type="hidden" name="sender" value="{{.Sender}}">
           <input type="hidden" name="subject" value="{{.Subject}}">
-          <select name="category">
+          <select name="category" data-testid="row-select">
             {{range $.Data.Categories}}<option value="{{.Name}}">{{.Name}}</option>{{end}}
           </select>
-          <button formaction="/action/correct" title="Learn this sender for future mail; don't move this email">Teach</button>
-          <button formaction="/action/refile" class="primary" title="Move this email now and learn the sender">Move &amp; teach</button>
+          <button formaction="/action/correct" data-testid="row-teach" title="Learn this sender for future mail; don't move this email">Teach</button>
+          <button formaction="/action/refile" class="primary" data-testid="row-move-teach" title="Move this email now and learn the sender">Move &amp; teach</button>
         </form>
       </td>
     </tr>
     {{else}}
-    <tr><td colspan="7" class="muted">{{if .Q}}No decisions match “{{.Q}}”.{{else}}No decisions yet. Winnow records them as it triages new mail.{{end}}</td></tr>
+    <tr><td colspan="7" class="muted" data-testid="empty">{{if .Q}}No decisions match “{{.Q}}”.{{else}}No decisions yet. Winnow records them as it triages new mail.{{end}}</td></tr>
     {{end}}
   </table>
 </div>
 <div class="row" style="justify-content:space-between;margin:.6rem 0">
-  <span class="muted">{{if .Decisions}}Showing {{.RangeStart}}–{{.RangeEnd}}{{else}}Nothing to show{{end}}</span>
+  <span class="muted" data-testid="page-range">{{if .Decisions}}Showing {{.RangeStart}}–{{.RangeEnd}}{{else}}Nothing to show{{end}}</span>
   <span class="row">
-    {{if .HasPrev}}<a class="btn" href="{{.PrevHref}}">← Newer</a>{{end}}
-    {{if .HasMore}}<a class="btn" href="{{.NextHref}}">Older →</a>{{end}}
+    {{if .HasPrev}}<a class="btn" href="{{.PrevHref}}" data-testid="page-newer">← Newer</a>{{end}}
+    {{if .HasMore}}<a class="btn" href="{{.NextHref}}" data-testid="page-older">Older →</a>{{end}}
   </span>
 </div>
 {{end}}
