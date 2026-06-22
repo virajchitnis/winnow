@@ -184,6 +184,31 @@ func TestErrorsLifecycle(t *testing.T) {
 	}
 }
 
+func TestRecordErrorDedupes(t *testing.T) {
+	s := testStore(t)
+	// The same recurring error must collapse to a single active row.
+	for i := 0; i < 5; i++ {
+		if err := s.RecordError("triage", "dns boom"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	active, _ := s.ActiveErrors(10)
+	if len(active) != 1 {
+		t.Fatalf("identical errors should collapse to 1, got %d", len(active))
+	}
+	// A different message is its own row.
+	_ = s.RecordError("triage", "other boom")
+	if active, _ := s.ActiveErrors(10); len(active) != 2 {
+		t.Errorf("distinct errors should be separate, got %d", len(active))
+	}
+	// After resolving, the same message records fresh again (not suppressed).
+	_ = s.ResolveErrors("triage")
+	_ = s.RecordError("triage", "dns boom")
+	if active, _ := s.ActiveErrors(10); len(active) != 1 {
+		t.Errorf("a resolved error should re-appear when it recurs, got %d", len(active))
+	}
+}
+
 func TestSenderStats(t *testing.T) {
 	s := testStore(t)
 	for i := 0; i < 3; i++ {

@@ -66,7 +66,20 @@ type AppError struct {
 
 // RecordError stores an error and returns its id.
 func (s *Store) RecordError(kind, message string) error {
-	_, err := s.db.Exec(
+	// Collapse repeats: if an identical error is already active, just refresh its
+	// timestamp instead of inserting a duplicate. This keeps the dashboard banner
+	// to one line per distinct error and stops the table growing unbounded when a
+	// failure recurs every cycle (e.g. a DNS outage).
+	res, err := s.db.Exec(
+		"UPDATE errors SET created_at = ? WHERE kind = ? AND message = ? AND resolved = 0",
+		s.nowStr(), kind, message)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		return nil
+	}
+	_, err = s.db.Exec(
 		"INSERT INTO errors(kind, message, created_at, resolved) VALUES(?, ?, ?, 0)",
 		kind, message, s.nowStr())
 	return err
