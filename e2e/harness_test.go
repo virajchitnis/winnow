@@ -254,6 +254,14 @@ func login(t *testing.T, page playwright.Page, base string) {
 	}
 }
 
+// gotoTab navigates to a dashboard tab and fails on error.
+func gotoTab(t *testing.T, page playwright.Page, base, path string) {
+	t.Helper()
+	if _, err := page.Goto(base + path); err != nil {
+		t.Fatalf("goto %s: %v", path, err)
+	}
+}
+
 // eventually polls fn until it returns true or the timeout elapses (for the
 // dashboard actions that run asynchronously in a goroutine).
 func eventually(t *testing.T, timeout time.Duration, fn func() bool) bool {

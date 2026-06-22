@@ -6,7 +6,7 @@
   <table>
     <tr><th>Pattern</th><th>Rule</th><th>Category</th><th></th></tr>
     {{range .Rules}}
-    <tr>
+    <tr data-testid="sender-row" data-pattern="{{.Pattern}}">
       <td>{{.Pattern}}</td>
       <td>{{if eq .Kind "allow_important"}}<span class="pill">always important</span>{{else}}<span class="pill">always bulk</span>{{end}}</td>
       <td class="muted">{{.Category}}</td>
@@ -14,23 +14,23 @@
         <form class="inline" method="post" action="/action/sender">
           <input type="hidden" name="pattern" value="{{.Pattern}}">
           <input type="hidden" name="kind" value="{{.Kind}}">
-          <button name="delete" value="1">Remove</button>
+          <button name="delete" value="1" data-testid="sender-remove">Remove</button>
         </form>
       </td>
     </tr>
-    {{else}}<tr><td colspan="4" class="muted">No sender rules yet.</td></tr>{{end}}
+    {{else}}<tr><td colspan="4" class="muted" data-testid="senders-empty">No sender rules yet.</td></tr>{{end}}
   </table>
 </div>
 <div class="card">
   <h2>Add a rule</h2>
   <form method="post" action="/action/sender" class="row">
-    <input type="text" name="pattern" placeholder="a@b.com or @b.com" required>
-    <select name="kind">
+    <input type="text" name="pattern" placeholder="a@b.com or @b.com" required data-testid="sender-pattern">
+    <select name="kind" data-testid="sender-kind">
       <option value="allow_important">always important (keep in inbox)</option>
       <option value="deny_bulk">always bulk (file)</option>
     </select>
-    <input type="text" name="category" placeholder="Category (for bulk)">
-    <button class="primary">Add</button>
+    <input type="text" name="category" placeholder="Category (for bulk)" data-testid="sender-category">
+    <button class="primary" data-testid="sender-add">Add</button>
   </form>
 </div>
 {{end}}

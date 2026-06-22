@@ -6,16 +6,16 @@
   <table>
     <tr><th>Name</th><th>Folder</th><th>Keep in inbox</th><th>Flag</th><th>Mark read</th><th></th></tr>
     {{range .Categories}}
-    <tr>
+    <tr data-testid="cat-row" data-cat="{{.Name}}">
       <form class="inline" method="post" action="/action/category">
       <input type="hidden" name="id" value="{{.ID}}">
-      <td><input type="text" name="name" value="{{.Name}}"></td>
-      <td><input type="text" name="destination_folder" value="{{.DestinationFolder}}" placeholder="(stays in inbox)"></td>
+      <td><input type="text" name="name" value="{{.Name}}" data-testid="cat-row-name"></td>
+      <td><input type="text" name="destination_folder" value="{{.DestinationFolder}}" placeholder="(stays in inbox)" data-testid="cat-row-folder"></td>
       <td style="text-align:center"><input type="checkbox" name="keep_in_inbox" {{if .KeepInInbox}}checked{{end}}></td>
       <td style="text-align:center"><input type="checkbox" name="flag" {{if .Flag}}checked{{end}}></td>
       <td style="text-align:center"><input type="checkbox" name="mark_read" {{if .MarkRead}}checked{{end}}></td>
-      <td><button>Save</button></form>
-        {{if not .IsBuiltin}}<form class="inline" method="post" action="/action/category/delete"><input type="hidden" name="id" value="{{.ID}}"><button>Delete</button></form>{{end}}
+      <td><button data-testid="cat-row-save">Save</button></form>
+        {{if not .IsBuiltin}}<form class="inline" method="post" action="/action/category/delete"><input type="hidden" name="id" value="{{.ID}}"><button data-testid="cat-row-delete">Delete</button></form>{{end}}
       </td>
     </tr>
     {{end}}
@@ -24,12 +24,12 @@
 <div class="card">
   <h2>Add a category</h2>
   <form method="post" action="/action/category" class="row">
-    <input type="text" name="name" placeholder="Name" required>
-    <input type="text" name="destination_folder" placeholder="Destination folder">
-    <label class="muted"><input type="checkbox" name="keep_in_inbox"> keep in inbox</label>
-    <label class="muted"><input type="checkbox" name="flag"> flag</label>
-    <label class="muted"><input type="checkbox" name="mark_read"> mark read</label>
-    <button class="primary">Add</button>
+    <input type="text" name="name" placeholder="Name" required data-testid="cat-name">
+    <input type="text" name="destination_folder" placeholder="Destination folder" data-testid="cat-folder">
+    <label class="muted"><input type="checkbox" name="keep_in_inbox" data-testid="cat-keep"> keep in inbox</label>
+    <label class="muted"><input type="checkbox" name="flag" data-testid="cat-flag"> flag</label>
+    <label class="muted"><input type="checkbox" name="mark_read" data-testid="cat-markread"> mark read</label>
+    <button class="primary" data-testid="cat-add">Add</button>
   </form>
 </div>
 {{end}}
