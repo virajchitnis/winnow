@@ -35,7 +35,11 @@ self-hosted via Docker.
   `static/`, served at `/static/`) with `hx-boost` on `<body>` turns link/form
   navigations into in-place AJAX swaps — no SPA, no JSON API. Controls carry
   `data-testid` hooks for the e2e suite.
-- `internal/digest/`, `internal/sieve/`, `internal/unsubscribe/`, `internal/retry/`.
+- `internal/digest/` — the daily **morning briefing**: an HTML email (multipart
+  with a text fallback) covering everything since the last send (watermark in
+  settings, falls back to 24h) — counts, needs-attention, pending rule/unsub
+  approvals, category + sender stats, cost/health. `internal/sieve/`,
+  `internal/unsubscribe/`, `internal/retry/`.
 - `e2e/` — browser regression suite (build tag `e2e`, Playwright); see Build/test.
 - `docs/` — GitHub Pages site (`index.html` + `guide.html`, the user guide).
 

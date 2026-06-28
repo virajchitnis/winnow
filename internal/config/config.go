@@ -82,7 +82,7 @@ func Load() (*Config, error) {
 	c.Defaults = Settings{
 		DryRun:                envBool("DRY_RUN", true),
 		Timezone:              envOr("TZ", "UTC"),
-		DigestHour:            envInt("DIGEST_HOUR", 7),
+		DigestHour:            envInt("DIGEST_HOUR", 6),
 		DigestEnabled:         envBool("DIGEST_ENABLED", true),
 		PollInterval:          envDuration("POLL_INTERVAL", 15*time.Minute),
 		ConfidenceThreshold:   envFloat("CONFIDENCE_THRESHOLD", 0.75),

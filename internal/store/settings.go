@@ -24,6 +24,7 @@ const (
 	keyUnsubVerifyDays = "unsub_verify_window_days"
 	keyEmailState      = "email_state"     // JMAP Email/changes state token
 	keyHighWaterRecv   = "high_water_recv" // newest receivedAt processed
+	keyLastDigestAt    = "last_digest_at"  // send time of the latest digest/briefing
 )
 
 // GetSetting returns a raw setting value and whether it exists.
@@ -151,6 +152,16 @@ func (s *Store) EmailState() (string, error) {
 
 // SetEmailState stores the JMAP Email/changes state token.
 func (s *Store) SetEmailState(token string) error { return s.SetSetting(keyEmailState, token) }
+
+// LastDigestAt returns when the last digest/briefing was sent (RFC3339), or ""
+// if one has never been sent.
+func (s *Store) LastDigestAt() (string, error) {
+	v, _, err := s.GetSetting(keyLastDigestAt)
+	return v, err
+}
+
+// SetLastDigestAt records the send time of the latest digest/briefing.
+func (s *Store) SetLastDigestAt(ts string) error { return s.SetSetting(keyLastDigestAt, ts) }
 
 func boolStr(b bool) string {
 	if b {

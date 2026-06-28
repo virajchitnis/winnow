@@ -327,12 +327,23 @@
   <p>After you unsubscribe, Winnow watches for continued mail. If a sender keeps emailing
   past the verify window, it flags them and offers a Sieve-rule fallback.</p>
 
-  <h2 id="digest">10. The daily digest</h2>
-  <p>Once a day Winnow emails you a summary of what it filed and what needs your attention,
-  sent from your own address to yourself (derived from the JMAP session — never hardcoded).
-  It doubles as a <strong>heartbeat</strong>: if the digest stops arriving, something is
-  wrong. Any persistent errors (expired token, repeated API failures, spend cap hit) appear
-  as a line in the digest and as a banner in the dashboard.</p>
+  <h2 id="digest">10. The morning briefing</h2>
+  <p>Once a day (default <strong>6am</strong>, set the hour + timezone in Settings) Winnow
+  emails you a polished HTML <strong>morning briefing</strong>, sent from your own address to
+  yourself (derived from the JMAP session — never hardcoded). It covers everything since the
+  last briefing (or the last 24 hours) and includes:</p>
+  <ul>
+    <li><strong>At-a-glance counts</strong> — filed / flagged / kept / to-review.</li>
+    <li><strong>🔴 Needs your attention</strong> — the important mail flagged in your inbox.</li>
+    <li><strong>✅ Waiting for your approval</strong> — pending Sieve rule proposals and
+      unsubscribe candidates.</li>
+    <li><strong>Filed by category</strong> and <strong>busiest senders</strong>.</li>
+    <li><strong>Kept for review</strong> — low-confidence mail left in the inbox.</li>
+    <li><strong>Cost &amp; health</strong> — Claude calls and any active errors.</li>
+  </ul>
+  <p>It doubles as a <strong>heartbeat</strong>: if it stops arriving, something is wrong.
+  Toggle it with the <em>daily digest</em> checkbox in Settings. (A future opt-in addition
+  will summarize the <em>content</em> of your newsletters here too.)</p>
 
   <h2 id="maint">11. Maintenance &amp; backups</h2>
   <ul>

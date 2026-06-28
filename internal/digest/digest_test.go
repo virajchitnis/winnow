@@ -54,10 +54,23 @@ func TestComposeEmpty(t *testing.T) {
 // fakes for Send.
 type fakeStore struct {
 	decisions []store.Decision
+	lastSetTo string
 }
 
 func (f fakeStore) DecisionsSince(string) ([]store.Decision, error) { return f.decisions, nil }
 func (f fakeStore) ActiveErrors(int) ([]store.AppError, error)      { return nil, nil }
+func (f fakeStore) SieveCandidates(string) ([]store.SieveCandidate, error) {
+	return nil, nil
+}
+func (f fakeStore) UnsubscribeCandidates(string) ([]store.UnsubscribeRecord, error) {
+	return nil, nil
+}
+func (f fakeStore) LLMCallsToday() (int, error)   { return 0, nil }
+func (f fakeStore) LastDigestAt() (string, error) { return "", nil }
+func (f *fakeStore) SetLastDigestAt(ts string) error {
+	f.lastSetTo = ts
+	return nil
+}
 
 type fakeMailer struct{ sent *jmap.OutgoingMessage }
 
@@ -71,14 +84,49 @@ func (f *fakeMailer) SendEmail(_ context.Context, m jmap.OutgoingMessage) error 
 
 func TestSendToSelf(t *testing.T) {
 	fm := &fakeMailer{}
-	d := New(fakeStore{decisions: []store.Decision{{Sender: "a@b.com", Action: "moved", Category: "Promotional"}}}, fm)
+	fs := &fakeStore{decisions: []store.Decision{{Sender: "a@b.com", Action: "moved", Category: "Promotional"}}}
+	d := New(fs, fm)
 	if err := d.Send(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if fm.sent == nil || fm.sent.To[0] != "me@example.com" {
 		t.Fatalf("digest not sent to self: %+v", fm.sent)
 	}
-	if !strings.Contains(fm.sent.Subject, "Winnow digest") {
+	if !strings.Contains(fm.sent.Subject, "Winnow briefing") {
 		t.Errorf("subject = %q", fm.sent.Subject)
+	}
+	if fm.sent.HTML == "" || !strings.Contains(fm.sent.HTML, "Morning briefing") {
+		t.Errorf("expected an HTML briefing body")
+	}
+	if fs.lastSetTo == "" {
+		t.Error("Send should advance the last-digest watermark")
+	}
+}
+
+func TestComposeHTMLSections(t *testing.T) {
+	now := time.Date(2026, 6, 22, 6, 0, 0, 0, time.UTC)
+	_, html, text := ComposeHTML(BriefingData{
+		Decisions: []store.Decision{
+			{Sender: "deals@shop.com", Action: "moved", Category: "Promotional"},
+			{Sender: "boss@work.com", Subject: "Q3 plan", Action: "flagged", Category: "Important"},
+			{Sender: "maybe@x.com", Action: "kept", Category: "Newsletters", LowConfidence: true},
+		},
+		Proposals: []store.SieveCandidate{{Domain: "shop.com", Category: "Promotional", Observations: 9}},
+		Unsubs:    []store.UnsubscribeRecord{{Sender: "spam@x.com", Count: 12}},
+		LLMToday:  3,
+		Now:       now,
+	})
+	for _, want := range []string{
+		"Needs your attention", "boss@work.com",
+		"Waiting for your approval", "@shop.com", "spam@x.com",
+		"Filed by category", "Busiest senders",
+		"worth a look", "Cost &amp; health", "3 Claude calls",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("HTML briefing missing %q", want)
+		}
+	}
+	if text == "" {
+		t.Error("expected a plain-text fallback")
 	}
 }

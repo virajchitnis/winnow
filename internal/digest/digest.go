@@ -14,6 +14,11 @@ import (
 type Store interface {
 	DecisionsSince(cutoff string) ([]store.Decision, error)
 	ActiveErrors(limit int) ([]store.AppError, error)
+	SieveCandidates(status string) ([]store.SieveCandidate, error)
+	UnsubscribeCandidates(status string) ([]store.UnsubscribeRecord, error)
+	LLMCallsToday() (int, error)
+	LastDigestAt() (string, error)
+	SetLastDigestAt(ts string) error
 }
 
 // Mailer sends the digest via JMAP. The recipient is derived from the account
@@ -41,13 +46,26 @@ func (d *Digester) WithClock(now func() time.Time) *Digester {
 	return d
 }
 
-// Send composes the digest over the last 24h and emails it to the account
-// owner. It satisfies schedule.Digester.
+// Send composes the morning briefing covering everything since the last send
+// (falling back to 24h) and emails it (HTML + text) to the account owner. On a
+// successful send it advances the last-sent watermark. Satisfies
+// schedule.Digester.
 func (d *Digester) Send(ctx context.Context) error {
 	now := d.now()
-	cutoff := now.Add(-24 * time.Hour).UTC().Format(time.RFC3339Nano)
 
-	decisions, err := d.store.DecisionsSince(cutoff)
+	// Window: since the last briefing, else the last 24h.
+	var since time.Time
+	if last, _ := d.store.LastDigestAt(); last != "" {
+		if t, err := time.Parse(time.RFC3339Nano, last); err == nil && t.Before(now) {
+			since = t
+		}
+	}
+	cutoff := now.Add(-24 * time.Hour)
+	if !since.IsZero() {
+		cutoff = since
+	}
+
+	decisions, err := d.store.DecisionsSince(cutoff.UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return err
 	}
@@ -55,17 +73,27 @@ func (d *Digester) Send(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	proposals, _ := d.store.SieveCandidates(store.SieveProposed)
+	unsubs, _ := d.store.UnsubscribeCandidates(store.UnsubNeedsDecision)
+	llm, _ := d.store.LLMCallsToday()
 
-	subject, body := Compose(decisions, errs, now)
+	subject, htmlBody, textBody := ComposeHTML(BriefingData{
+		Decisions: decisions, Errors: errs, Proposals: proposals,
+		Unsubs: unsubs, LLMToday: llm, Since: since, Now: now,
+	})
 
 	ident, err := d.mail.PrimaryIdentity(ctx)
 	if err != nil {
 		return err
 	}
-	return d.mail.SendEmail(ctx, jmap.OutgoingMessage{
+	if err := d.mail.SendEmail(ctx, jmap.OutgoingMessage{
 		FromIdentity: ident,
 		To:           []string{ident.Email},
 		Subject:      subject,
-		Text:         body,
-	})
+		Text:         textBody,
+		HTML:         htmlBody,
+	}); err != nil {
+		return err
+	}
+	return d.store.SetLastDigestAt(now.UTC().Format(time.RFC3339Nano))
 }

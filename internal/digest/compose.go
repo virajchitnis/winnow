@@ -49,7 +49,7 @@ func Compose(decisions []store.Decision, errs []store.AppError, now time.Time) (
 	if len(perCategory) > 0 {
 		b.WriteString("\nFiled by category:\n")
 		for _, kv := range sortedCounts(perCategory) {
-			fmt.Fprintf(&b, "  • %s: %d\n", kv.name, kv.n)
+			fmt.Fprintf(&b, "  • %s: %d\n", kv.Name, kv.N)
 		}
 	}
 
@@ -91,8 +91,8 @@ func writeItem(b *strings.Builder, d store.Decision) {
 }
 
 type countKV struct {
-	name string
-	n    int
+	Name string
+	N    int
 }
 
 func sortedCounts(m map[string]int) []countKV {
@@ -101,10 +101,10 @@ func sortedCounts(m map[string]int) []countKV {
 		out = append(out, countKV{k, v})
 	}
 	sort.Slice(out, func(i, j int) bool {
-		if out[i].n != out[j].n {
-			return out[i].n > out[j].n
+		if out[i].N != out[j].N {
+			return out[i].N > out[j].N
 		}
-		return out[i].name < out[j].name
+		return out[i].Name < out[j].Name
 	})
 	return out
 }

@@ -60,12 +60,14 @@ func (c *Client) PrimaryIdentity(ctx context.Context) (Identity, error) {
 	return ids[0], nil
 }
 
-// OutgoingMessage describes a plain-text message to send.
+// OutgoingMessage describes a message to send. When HTML is set, it is sent as
+// multipart/alternative with Text as the plain-text fallback.
 type OutgoingMessage struct {
 	FromIdentity Identity
 	To           []string
 	Subject      string
 	Text         string
+	HTML         string // optional; when set, sent as multipart/alternative
 }
 
 // SendEmail creates a draft, submits it, and (on success) files it in Sent —
@@ -93,20 +95,32 @@ func (c *Client) SendEmail(ctx context.Context, msg OutgoingMessage) error {
 		to = append(to, EmailAddress{Email: addr})
 	}
 
+	// Plain text by default; multipart/alternative when an HTML part is given.
+	bodyStructure := map[string]any{"type": "text/plain", "partId": "body"}
+	bodyValues := map[string]any{"body": map[string]any{"value": msg.Text}}
+	if msg.HTML != "" {
+		bodyStructure = map[string]any{
+			"type": "multipart/alternative",
+			"subParts": []map[string]any{
+				{"type": "text/plain", "partId": "text"},
+				{"type": "text/html", "partId": "html"},
+			},
+		}
+		bodyValues = map[string]any{
+			"text": map[string]any{"value": msg.Text},
+			"html": map[string]any{"value": msg.HTML},
+		}
+	}
+
 	emailCreate := map[string]any{
 		"draft": map[string]any{
-			"mailboxIds": map[string]bool{drafts.ID: true},
-			"keywords":   map[string]bool{"$draft": true, "$seen": true},
-			"from":       []EmailAddress{{Name: msg.FromIdentity.Name, Email: msg.FromIdentity.Email}},
-			"to":         to,
-			"subject":    msg.Subject,
-			"bodyStructure": map[string]any{
-				"type":   "text/plain",
-				"partId": "body",
-			},
-			"bodyValues": map[string]any{
-				"body": map[string]any{"value": msg.Text},
-			},
+			"mailboxIds":    map[string]bool{drafts.ID: true},
+			"keywords":      map[string]bool{"$draft": true, "$seen": true},
+			"from":          []EmailAddress{{Name: msg.FromIdentity.Name, Email: msg.FromIdentity.Email}},
+			"to":            to,
+			"subject":       msg.Subject,
+			"bodyStructure": bodyStructure,
+			"bodyValues":    bodyValues,
 		},
 	}
 
