@@ -26,6 +26,8 @@
       <label class="muted"><input type="checkbox" name="dry_run" {{if $s.DryRun}}checked{{end}} data-testid="set-dryrun"> dry-run (don't move mail)</label>
       &nbsp;&nbsp;
       <label class="muted"><input type="checkbox" name="digest_enabled" {{if $s.DigestEnabled}}checked{{end}}> daily digest</label>
+      &nbsp;&nbsp;
+      <label class="muted" title="Opt-in: summarize the content of your Newsletters-category mail in the briefing (sends those bodies to Claude)"><input type="checkbox" name="newsletter_summaries" data-testid="set-newsletter-summaries" {{if $s.NewsletterSummaries}}checked{{end}}> newsletter summaries</label>
     </p>
     <button class="primary" data-testid="set-save">Save settings</button>
   </form>

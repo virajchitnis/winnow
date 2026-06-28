@@ -38,8 +38,11 @@ self-hosted via Docker.
 - `internal/digest/` — the daily **morning briefing**: an HTML email (multipart
   with a text fallback) covering everything since the last send (watermark in
   settings, falls back to 24h) — counts, needs-attention, pending rule/unsub
-  approvals, category + sender stats, cost/health. `internal/sieve/`,
-  `internal/unsubscribe/`, `internal/retry/`.
+  approvals, category + sender stats, cost/health. **Opt-in** newsletter content
+  summaries (`NewsletterSummaries` setting, off by default) fetch Newsletters-
+  category bodies via JMAP and summarize them with Claude — the *only* path that
+  sends bodies to the API; keep it opt-in and Newsletters-scoped.
+  `internal/sieve/`, `internal/unsubscribe/`, `internal/retry/`.
 - `e2e/` — browser regression suite (build tag `e2e`, Playwright); see Build/test.
 - `docs/` — GitHub Pages site (`index.html` + `guide.html`, the user guide).
 

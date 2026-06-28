@@ -50,6 +50,7 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	st.DigestEnabled = r.FormValue("digest_enabled") == "on"
+	st.NewsletterSummaries = r.FormValue("newsletter_summaries") == "on"
 	st.DryRun = r.FormValue("dry_run") == "on"
 	if v := r.FormValue("confidence_threshold"); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 1 {
@@ -96,6 +97,7 @@ func (s *Server) saveSettings(st config.Settings) {
 	put("privacy_mode", string(st.Privacy))
 	put("decision_retention_days", strconv.Itoa(st.DecisionRetentionDays))
 	put("unsub_verify_window_days", strconv.Itoa(st.UnsubVerifyWindowDays))
+	put("newsletter_summaries", boolStr(st.NewsletterSummaries))
 }
 
 func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {

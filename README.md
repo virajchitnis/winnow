@@ -26,7 +26,8 @@ over time. The name comes from *winnowing*: separating the grain from the chaff.
   methods (RFC 8058 One-Click, `mailto:`).
 - **Morning briefing** — a polished daily HTML email (default 6am) with what was
   filed, what needs your attention, approvals waiting, stats, and cost/health.
-  Doubles as a heartbeat.
+  Doubles as a heartbeat. Optional, opt-in: AI **summaries of your newsletters'
+  content** (the only feature that sends bodies to Claude).
 - **A small web dashboard** to review/correct decisions and tune everything,
   reachable privately over Tailscale and (optionally) via a Cloudflare Tunnel.
   Server-rendered with a tiny self-hosted [htmx](https://htmx.org) for snappy
@@ -149,6 +150,11 @@ mail only, Winnow sends the **subject, sender, and a short snippet** (not full
 bodies) to Anthropic's API to classify it. You can tighten this to
 subject+sender-only in Settings. Heuristics and graduated Sieve rules keep most
 mail off the API entirely.
+
+The **one exception is opt-in**: if you turn on *newsletter summaries*, the
+morning briefing sends the **bodies of your Newsletters-category mail** to Claude
+to summarize them. It's **off by default**; leave it off to keep full bodies off
+the API.
 
 ## Backup
 

@@ -10,15 +10,21 @@ import (
 	"winnow/internal/store"
 )
 
+// NewsletterHighlight is one summarized newsletter (opt-in Phase B section).
+type NewsletterHighlight struct {
+	Sender, Subject, Summary string
+}
+
 // BriefingData is everything the HTML morning briefing renders.
 type BriefingData struct {
-	Decisions []store.Decision
-	Errors    []store.AppError
-	Proposals []store.SieveCandidate    // pending Sieve rule proposals
-	Unsubs    []store.UnsubscribeRecord // unsubscribe candidates needing a decision
-	LLMToday  int
-	Since     time.Time
-	Now       time.Time
+	Decisions  []store.Decision
+	Errors     []store.AppError
+	Proposals  []store.SieveCandidate    // pending Sieve rule proposals
+	Unsubs     []store.UnsubscribeRecord // unsubscribe candidates needing a decision
+	Highlights []NewsletterHighlight     // summarized newsletters (opt-in)
+	LLMToday   int
+	Since      time.Time
+	Now        time.Time
 }
 
 // htmlView is the flattened model passed to the template.
@@ -30,6 +36,7 @@ type htmlView struct {
 	PerCategory, TopSenders     []countKV
 	Proposals                   []proposalRow
 	Unsubs                      []unsubRow
+	Highlights                  []NewsletterHighlight
 	LLMToday                    int
 	Errors                      []errRow
 	HasApprovals                bool
@@ -82,6 +89,7 @@ func ComposeHTML(d BriefingData) (subject, htmlBody, textBody string) {
 	for _, u := range d.Unsubs {
 		v.Unsubs = append(v.Unsubs, unsubRow{Sender: u.Sender, Count: u.Count})
 	}
+	v.Highlights = d.Highlights
 	v.HasApprovals = len(v.Proposals) > 0 || len(v.Unsubs) > 0
 	for _, e := range d.Errors {
 		v.Errors = append(v.Errors, errRow{Kind: e.Kind, Message: oneLine(e.Message)})
@@ -177,6 +185,17 @@ var briefingTmpl = template.Must(template.New("briefing").Funcs(template.FuncMap
     {{if .Unsubs}}<div style="font-weight:600;margin:8px 0 2px;">Unsubscribe candidates</div>
       {{range .Unsubs}}<div style="padding:3px 0;">{{.Sender}} <span style="color:#8a8a86;">({{.Count}} seen)</span></div>{{end}}{{end}}
     <div style="margin-top:8px;color:#8a8a86;">Review these in your Winnow dashboard.</div>
+  </td></tr>
+  {{end}}
+
+  {{if .Highlights}}
+  {{template "section" "📰 Newsletter highlights"}}
+  <tr><td style="padding:0 24px 8px;">
+    {{range .Highlights}}<div style="padding:8px 0;border-bottom:1px solid #efefef;">
+      <div style="font-size:14px;font-weight:600;">{{.Subject}}</div>
+      <div style="font-size:12px;color:#8a8a86;">{{.Sender}}</div>
+      <div style="font-size:13px;color:#3a3a38;margin-top:3px;">{{.Summary}}</div>
+    </div>{{end}}
   </td></tr>
   {{end}}
 

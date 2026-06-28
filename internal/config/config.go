@@ -57,8 +57,9 @@ type Settings struct {
 	LLMDailyCap           int
 	Model                 string
 	Privacy               PrivacyMode
-	DecisionRetentionDays int // decisions older than this are pruned (0 = keep forever)
-	UnsubVerifyWindowDays int // days to wait before confirming an unsubscribe succeeded
+	DecisionRetentionDays int  // decisions older than this are pruned (0 = keep forever)
+	UnsubVerifyWindowDays int  // days to wait before confirming an unsubscribe succeeded
+	NewsletterSummaries   bool // opt-in: summarize Newsletters-category content in the briefing
 }
 
 // minPollInterval is the floor enforced on the poll interval to stay friendly to
@@ -91,6 +92,7 @@ func Load() (*Config, error) {
 		Privacy:               PrivacyMode(envOr("PRIVACY_MODE", string(PrivacySnippet))),
 		DecisionRetentionDays: envInt("DECISION_RETENTION_DAYS", 90),
 		UnsubVerifyWindowDays: envInt("UNSUB_VERIFY_WINDOW_DAYS", 14),
+		NewsletterSummaries:   envBool("NEWSLETTER_SUMMARIES", false),
 	}
 
 	if err := c.validate(); err != nil {

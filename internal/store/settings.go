@@ -22,6 +22,7 @@ const (
 	keyPrivacy         = "privacy_mode"
 	keyRetentionDays   = "decision_retention_days"
 	keyUnsubVerifyDays = "unsub_verify_window_days"
+	keyNewsletterSum   = "newsletter_summaries"
 	keyEmailState      = "email_state"     // JMAP Email/changes state token
 	keyHighWaterRecv   = "high_water_recv" // newest receivedAt processed
 	keyLastDigestAt    = "last_digest_at"  // send time of the latest digest/briefing
@@ -64,6 +65,7 @@ func (s *Store) SeedSettings(d config.Settings) error {
 		keyPrivacy:         string(d.Privacy),
 		keyRetentionDays:   strconv.Itoa(d.DecisionRetentionDays),
 		keyUnsubVerifyDays: strconv.Itoa(d.UnsubVerifyWindowDays),
+		keyNewsletterSum:   boolStr(d.NewsletterSummaries),
 	}
 	for k, v := range seed {
 		if _, ok, err := s.GetSetting(k); err != nil {
@@ -139,6 +141,8 @@ func applySetting(s *config.Settings, k, v string) {
 		if n, err := strconv.Atoi(v); err == nil {
 			s.UnsubVerifyWindowDays = n
 		}
+	case keyNewsletterSum:
+		s.NewsletterSummaries = parseBool(v, s.NewsletterSummaries)
 	}
 }
 
@@ -162,6 +166,22 @@ func (s *Store) LastDigestAt() (string, error) {
 
 // SetLastDigestAt records the send time of the latest digest/briefing.
 func (s *Store) SetLastDigestAt(ts string) error { return s.SetSetting(keyLastDigestAt, ts) }
+
+// NewsletterConfig returns whether the opt-in newsletter summaries are enabled
+// and the model to use for them.
+func (s *Store) NewsletterConfig() (bool, string, error) {
+	on := false
+	if v, ok, err := s.GetSetting(keyNewsletterSum); err != nil {
+		return false, "", err
+	} else if ok {
+		on = parseBool(v, false)
+	}
+	model := "claude-haiku-4-5"
+	if v, ok, _ := s.GetSetting(keyModel); ok && v != "" {
+		model = v
+	}
+	return on, model, nil
+}
 
 func boolStr(b bool) string {
 	if b {

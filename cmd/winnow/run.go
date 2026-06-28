@@ -54,9 +54,12 @@ func build() (*app, error) {
 	}
 
 	jc := jmap.New(cfg.FastmailToken)
-	cl := classify.New(classify.NewAnthropic(cfg.AnthropicAPIKey), st)
+	an := classify.NewAnthropic(cfg.AnthropicAPIKey)
+	cl := classify.New(an, st)
 	ap := actions.NewApplier(jc)
-	dg := digest.New(st, jc)
+	// WithSummaries enables the opt-in newsletter content summaries (gated by the
+	// setting); the Anthropic client summarizes and the JMAP client fetches bodies.
+	dg := digest.New(st, jc).WithSummaries(an, jc)
 
 	sched := schedule.New(schedule.Deps{
 		Store:      st,

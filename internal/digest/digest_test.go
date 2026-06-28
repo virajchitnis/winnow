@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"winnow/internal/actions"
+	"winnow/internal/classify"
 	"winnow/internal/jmap"
 	"winnow/internal/store"
 )
@@ -55,6 +56,7 @@ func TestComposeEmpty(t *testing.T) {
 type fakeStore struct {
 	decisions []store.Decision
 	lastSetTo string
+	nlOn      bool
 }
 
 func (f fakeStore) DecisionsSince(string) ([]store.Decision, error) { return f.decisions, nil }
@@ -65,8 +67,9 @@ func (f fakeStore) SieveCandidates(string) ([]store.SieveCandidate, error) {
 func (f fakeStore) UnsubscribeCandidates(string) ([]store.UnsubscribeRecord, error) {
 	return nil, nil
 }
-func (f fakeStore) LLMCallsToday() (int, error)   { return 0, nil }
-func (f fakeStore) LastDigestAt() (string, error) { return "", nil }
+func (f fakeStore) LLMCallsToday() (int, error)             { return 0, nil }
+func (f fakeStore) LastDigestAt() (string, error)           { return "", nil }
+func (f fakeStore) NewsletterConfig() (bool, string, error) { return f.nlOn, "m", nil }
 func (f *fakeStore) SetLastDigestAt(ts string) error {
 	f.lastSetTo = ts
 	return nil
@@ -100,6 +103,58 @@ func TestSendToSelf(t *testing.T) {
 	}
 	if fs.lastSetTo == "" {
 		t.Error("Send should advance the last-digest watermark")
+	}
+}
+
+type fakeSummarizer struct{ out []string }
+
+func (f fakeSummarizer) SummarizeNewsletters(_ context.Context, _ string, _ []classify.NewsletterInput, _ int) ([]string, error) {
+	return f.out, nil
+}
+
+type fakeFetcher struct{ bodies map[string]string }
+
+func (f fakeFetcher) FetchTextBodies(_ context.Context, _ []string, _ int) (map[string]string, error) {
+	return f.bodies, nil
+}
+
+func TestNewsletterHighlights(t *testing.T) {
+	fm := &fakeMailer{}
+	fs := &fakeStore{
+		nlOn: true,
+		decisions: []store.Decision{
+			{EmailID: "n1", Sender: "weekly@news.com", Subject: "This week in tech", Category: "Newsletters", Action: "moved"},
+			{Sender: "deals@shop.com", Category: "Promotional", Action: "moved"}, // not a newsletter
+		},
+	}
+	d := New(fs, fm).WithSummaries(
+		fakeSummarizer{out: []string{"Three big stories about chips, AI, and launches."}},
+		fakeFetcher{bodies: map[string]string{"n1": "full newsletter body"}},
+	)
+	if err := d.Send(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Newsletter highlights", "This week in tech", "Three big stories"} {
+		if !strings.Contains(fm.sent.HTML, want) {
+			t.Errorf("briefing missing %q", want)
+		}
+	}
+}
+
+func TestNewsletterHighlightsOffByDefault(t *testing.T) {
+	fm := &fakeMailer{}
+	fs := &fakeStore{nlOn: false, decisions: []store.Decision{
+		{EmailID: "n1", Sender: "weekly@news.com", Category: "Newsletters", Action: "moved"},
+	}}
+	d := New(fs, fm).WithSummaries(
+		fakeSummarizer{out: []string{"should not appear"}},
+		fakeFetcher{bodies: map[string]string{"n1": "body"}},
+	)
+	if err := d.Send(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(fm.sent.HTML, "Newsletter highlights") {
+		t.Error("summaries must be off unless the setting is enabled")
 	}
 }
 

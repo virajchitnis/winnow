@@ -293,7 +293,8 @@
     <tr><td>Model</td><td>Classifier model (default Haiku; switch to a stronger model for tougher mail at higher cost).</td></tr>
     <tr><td>Privacy mode</td><td>subject + sender + snippet (default) or subject + sender only.</td></tr>
     <tr><td>dry-run</td><td>Preview switch for the <em>automatic</em> triage pipeline only. Explicit actions (Sweep apply, Move &amp; teach, Sieve apply, Unsubscribe) still run — see <a href="#dryrun">section 5</a>.</td></tr>
-    <tr><td>daily digest</td><td>Enable/disable the digest email.</td></tr>
+    <tr><td>daily digest</td><td>Enable/disable the morning briefing email.</td></tr>
+    <tr><td>newsletter summaries</td><td>Opt-in (off by default). Adds AI summaries of your Newsletters-category content to the briefing — the only feature that sends bodies to Claude.</td></tr>
   </table>
   <p>API tokens and secrets are configured via the server environment and are never shown
   or editable in the UI — a dashboard authenticated <em>by</em> those secrets shouldn't be
@@ -342,8 +343,15 @@
     <li><strong>Cost &amp; health</strong> — Claude calls and any active errors.</li>
   </ul>
   <p>It doubles as a <strong>heartbeat</strong>: if it stops arriving, something is wrong.
-  Toggle it with the <em>daily digest</em> checkbox in Settings. (A future opt-in addition
-  will summarize the <em>content</em> of your newsletters here too.)</p>
+  Toggle it with the <em>daily digest</em> checkbox in Settings.</p>
+  <div class="card warn">
+    <strong>📰 Newsletter highlights (opt-in).</strong> Enable <em>newsletter summaries</em> in
+    Settings and the briefing adds a section that summarizes the <em>content</em> of the mail
+    filed to your <strong>Newsletters</strong> category since the last send — a couple of
+    sentences each. <strong>This is the one feature that sends message bodies to Claude</strong>
+    (only your Newsletters-category mail, capped per briefing, truncated). It's off by default;
+    leave it off if you'd rather nothing but subjects/snippets ever leave for the API.
+  </div>
 
   <h2 id="maint">11. Maintenance &amp; backups</h2>
   <ul>

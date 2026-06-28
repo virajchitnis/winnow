@@ -2,8 +2,29 @@ package jmap
 
 import (
 	"context"
+	"regexp"
+	"strings"
 	"time"
 )
+
+var (
+	// RE2 has no backreferences; strip script/style blocks, then any tag.
+	htmlBlockRe = regexp.MustCompile(`(?is)<(script|style)[^>]*>.*?</(script|style)>`)
+	htmlTagRe   = regexp.MustCompile(`<[^>]+>`)
+	htmlWSRe    = regexp.MustCompile(`[ \t\r\n]+`)
+)
+
+// stripHTML reduces an HTML body to readable plain text: drop script/style and
+// all tags, collapse whitespace. Crude but adequate for summarization input.
+func stripHTML(s string) string {
+	s = htmlBlockRe.ReplaceAllString(s, " ")
+	s = htmlTagRe.ReplaceAllString(s, " ")
+	s = strings.ReplaceAll(s, "&nbsp;", " ")
+	s = strings.ReplaceAll(s, "&amp;", "&")
+	s = strings.ReplaceAll(s, "&lt;", "<")
+	s = strings.ReplaceAll(s, "&gt;", ">")
+	return strings.TrimSpace(htmlWSRe.ReplaceAllString(s, " "))
+}
 
 // Email is the subset of a JMAP Email object Winnow uses.
 type Email struct {
@@ -188,6 +209,67 @@ func (c *Client) GetEmails(ctx context.Context, ids []string) ([]Email, error) {
 		return nil, err
 	}
 	return res.List, nil
+}
+
+// FetchTextBodies returns the body text of the given emails, keyed by id. It
+// prefers the plain-text part; for HTML-only mail it falls back to a crude
+// tag-strip of the HTML part. Bodies are truncated server-side to maxBytes.
+// Used by the morning briefing's (opt-in) newsletter summaries.
+func (c *Client) FetchTextBodies(ctx context.Context, ids []string, maxBytes int) (map[string]string, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	sess, err := c.getSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	call, err := newCall("Email/get", map[string]any{
+		"accountId":           sess.AccountID(),
+		"ids":                 ids,
+		"properties":          []string{"id", "textBody", "htmlBody", "bodyValues"},
+		"fetchTextBodyValues": true,
+		"fetchHTMLBodyValues": true,
+		"maxBodyValueBytes":   maxBytes,
+	}, "b")
+	if err != nil {
+		return nil, err
+	}
+	resps, err := c.do(ctx, []string{CapCore, CapMail}, call)
+	if err != nil {
+		return nil, err
+	}
+	type part struct {
+		PartID string `json:"partId"`
+	}
+	var res struct {
+		List []struct {
+			ID         string                            `json:"id"`
+			TextBody   []part                            `json:"textBody"`
+			HTMLBody   []part                            `json:"htmlBody"`
+			BodyValues map[string]struct{ Value string } `json:"bodyValues"`
+		} `json:"list"`
+	}
+	if err := expect(resps, "b", &res); err != nil {
+		return nil, err
+	}
+	out := make(map[string]string, len(res.List))
+	for _, e := range res.List {
+		for _, p := range e.TextBody {
+			if bv, ok := e.BodyValues[p.PartID]; ok && bv.Value != "" {
+				out[e.ID] = bv.Value
+				break
+			}
+		}
+		if out[e.ID] == "" {
+			for _, p := range e.HTMLBody {
+				if bv, ok := e.BodyValues[p.PartID]; ok && bv.Value != "" {
+					out[e.ID] = stripHTML(bv.Value)
+					break
+				}
+			}
+		}
+	}
+	return out, nil
 }
 
 // EmailUpdate describes a single Email/set patch for one email.

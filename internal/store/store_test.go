@@ -184,6 +184,30 @@ func TestErrorsLifecycle(t *testing.T) {
 	}
 }
 
+func TestNewsletterConfig(t *testing.T) {
+	s := testStore(t)
+	if on, _, _ := s.NewsletterConfig(); on {
+		t.Error("newsletter summaries should default off")
+	}
+	_ = s.SetSetting("newsletter_summaries", "true")
+	_ = s.SetSetting("model", "claude-sonnet-4-6")
+	on, model, err := s.NewsletterConfig()
+	if err != nil || !on || model != "claude-sonnet-4-6" {
+		t.Errorf("NewsletterConfig = (%v, %q, %v)", on, model, err)
+	}
+}
+
+func TestLastDigestAtRoundTrip(t *testing.T) {
+	s := testStore(t)
+	if v, _ := s.LastDigestAt(); v != "" {
+		t.Errorf("default last-digest = %q", v)
+	}
+	_ = s.SetLastDigestAt("2026-06-22T06:00:00Z")
+	if v, _ := s.LastDigestAt(); v != "2026-06-22T06:00:00Z" {
+		t.Errorf("last-digest = %q", v)
+	}
+}
+
 func TestRecordErrorDedupes(t *testing.T) {
 	s := testStore(t)
 	// The same recurring error must collapse to a single active row.
