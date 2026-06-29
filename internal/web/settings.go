@@ -143,9 +143,10 @@ func (s *Server) handleTestConnection(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/settings", strings.Title(svc)+" connection OK.")
 }
 
+// boolStr writes the canonical form the store reads back (strconv-parseable).
 func boolStr(b bool) string {
 	if b {
-		return "on"
+		return "true"
 	}
-	return "off"
+	return "false"
 }

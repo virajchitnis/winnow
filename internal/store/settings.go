@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"winnow/internal/config"
@@ -190,10 +191,16 @@ func boolStr(b bool) string {
 	return "false"
 }
 
+// parseBool accepts the canonical strconv forms plus the HTML checkbox forms
+// ("on"/"off"), so values written by either the seed or the dashboard parse
+// correctly. Unknown values fall back to def.
 func parseBool(v string, def bool) bool {
-	b, err := strconv.ParseBool(v)
-	if err != nil {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "true", "t", "1", "on", "yes":
+		return true
+	case "false", "f", "0", "off", "no":
+		return false
+	default:
 		return def
 	}
-	return b
 }

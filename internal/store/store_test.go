@@ -184,6 +184,29 @@ func TestErrorsLifecycle(t *testing.T) {
 	}
 }
 
+func TestBoolSettingsRoundTrip(t *testing.T) {
+	s := testStore(t)
+	// Persist values that DIFFER from the defaults we later load against, so a
+	// parse failure (which silently returns the default) is caught.
+	_ = s.SetSetting("dry_run", boolStr(false))
+	_ = s.SetSetting("digest_enabled", boolStr(true))
+	got, err := s.LoadSettings(config.Settings{DryRun: true, DigestEnabled: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DryRun {
+		t.Error("dry_run=false must override a true default")
+	}
+	if !got.DigestEnabled {
+		t.Error("digest_enabled=true must override a false default")
+	}
+	// Legacy "on"/"off" values (written by older builds) must still parse.
+	_ = s.SetSetting("dry_run", "on")
+	if g, _ := s.LoadSettings(config.Settings{DryRun: false}); !g.DryRun {
+		t.Error(`legacy "on" should parse as true`)
+	}
+}
+
 func TestNewsletterConfig(t *testing.T) {
 	s := testStore(t)
 	if on, _, _ := s.NewsletterConfig(); on {
