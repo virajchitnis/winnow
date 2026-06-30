@@ -429,4 +429,13 @@ func (s *Server) handleApplyReviewed(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/", "Applying reviewed decisions to the inbox.")
 }
 
+func (s *Server) handleSendDigest(w http.ResponseWriter, r *http.Request) {
+	go func() {
+		if err := s.sched.SendDigestNow(contextDetached()); err != nil {
+			_ = s.store.RecordError("digest", err.Error())
+		}
+	}()
+	redirect(w, r, "/settings", "Sending the briefing now — check your inbox shortly.")
+}
+
 func urlEncode(s string) string { return url.QueryEscape(s) }

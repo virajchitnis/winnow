@@ -31,6 +31,7 @@ type Scheduler interface {
 	Sweep(ctx context.Context, apply bool) (schedule.SweepResult, error)
 	Refile(ctx context.Context, emailID, category string) (string, error)
 	ApplyReviewed(ctx context.Context) (int, error)
+	SendDigestNow(ctx context.Context) error
 	HealthSnapshot() schedule.Health
 }
 
@@ -128,6 +129,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/action/run", s.requireAuth(s.handleRunNow))
 	mux.HandleFunc("/action/sweep", s.requireAuth(s.handleSweep))
 	mux.HandleFunc("/action/apply-reviewed", s.requireAuth(s.handleApplyReviewed))
+	mux.HandleFunc("/action/digest", s.requireAuth(s.handleSendDigest))
 	mux.HandleFunc("/action/test", s.requireAuth(s.handleTestConnection))
 
 	return mux

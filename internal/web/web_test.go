@@ -22,6 +22,7 @@ type fakeScheduler struct {
 	refileTo        string
 	refileErr       error
 	appliedReviewed bool
+	digestSent      bool
 }
 
 func (f *fakeScheduler) TriageOnce(context.Context) {}
@@ -40,6 +41,10 @@ func (f *fakeScheduler) Refile(_ context.Context, _, category string) (string, e
 func (f *fakeScheduler) ApplyReviewed(context.Context) (int, error) {
 	f.appliedReviewed = true
 	return 0, nil
+}
+func (f *fakeScheduler) SendDigestNow(context.Context) error {
+	f.digestSent = true
+	return nil
 }
 func (f *fakeScheduler) HealthSnapshot() schedule.Health { return schedule.Health{LastPollOK: true} }
 

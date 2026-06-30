@@ -5,6 +5,7 @@ package schedule
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -160,6 +161,16 @@ func (s *Scheduler) TriageOnce(ctx context.Context) {
 	} else {
 		_ = s.store.ResolveErrors("triage")
 	}
+}
+
+// SendDigestNow sends the morning briefing immediately (the dashboard's
+// "Send briefing now" button). An explicit user action — it ignores the
+// DigestEnabled toggle but otherwise behaves like the scheduled send.
+func (s *Scheduler) SendDigestNow(ctx context.Context) error {
+	if s.digester == nil {
+		return fmt.Errorf("digest not configured")
+	}
+	return s.digester.Send(ctx)
 }
 
 func (s *Scheduler) maybeSendDigest(ctx context.Context) {
