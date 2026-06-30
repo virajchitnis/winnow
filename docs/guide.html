@@ -346,11 +346,13 @@
   Toggle it with the <em>daily digest</em> checkbox in Settings.</p>
   <div class="card warn">
     <strong>📰 Newsletter highlights (opt-in).</strong> Enable <em>newsletter summaries</em> in
-    Settings and the briefing adds a section that summarizes the <em>content</em> of the mail
-    filed to your <strong>Newsletters</strong> category since the last send — a couple of
-    sentences each. <strong>This is the one feature that sends message bodies to Claude</strong>
-    (only your Newsletters-category mail, capped per briefing, truncated). It's off by default;
-    leave it off if you'd rather nothing but subjects/snippets ever leave for the API.
+    Settings and the briefing adds a section summarizing the <em>content</em> of the mail in
+    your <strong>Newsletters folder</strong> since the last send — a couple of sentences each.
+    It reads the folder <em>directly</em>, so it includes newsletters moved there by your own
+    Fastmail filters or by Winnow's graduated Sieve rules — i.e. mail that never passes through
+    the inbox. <strong>This is the one feature that sends message bodies to Claude</strong>
+    (only the Newsletters folder, capped per briefing, truncated). Off by default; leave it off
+    if you'd rather nothing but subjects/snippets ever leave for the API.
   </div>
 
   <h2 id="maint">11. Maintenance &amp; backups</h2>

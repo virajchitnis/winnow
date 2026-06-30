@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	newsletterCategory = "Newsletters"
 	maxNewsletters     = 12   // cap summaries per briefing (cost control)
 	maxBodyBytes       = 6000 // truncate each body before summarizing
 	summarizeMaxTokens = 1024
@@ -27,7 +26,7 @@ type Store interface {
 	LLMCallsToday() (int, error)
 	LastDigestAt() (string, error)
 	SetLastDigestAt(ts string) error
-	NewsletterConfig() (on bool, model string, err error) // opt-in summaries toggle + model
+	NewsletterConfig() (on bool, model, folder string, err error) // opt-in summaries: toggle, model, source folder
 }
 
 // Mailer sends the digest via JMAP. The recipient is derived from the account
@@ -42,8 +41,12 @@ type Summarizer interface {
 	SummarizeNewsletters(ctx context.Context, model string, items []classify.NewsletterInput, maxTokens int) ([]string, error)
 }
 
-// BodyFetcher fetches email body text (truncated) for summarization.
-type BodyFetcher interface {
+// NewsletterSource reads newsletters straight from their folder — including mail
+// moved there server-side that Winnow's inbox triage never processed.
+type NewsletterSource interface {
+	MailboxByName(ctx context.Context, name string) (jmap.Mailbox, bool, error)
+	QueryMailboxSince(ctx context.Context, mailboxID string, after time.Time, limit int) ([]string, error)
+	GetEmails(ctx context.Context, ids []string) ([]jmap.Email, error)
 	FetchTextBodies(ctx context.Context, ids []string, maxBytes int) (map[string]string, error)
 }
 
@@ -51,8 +54,8 @@ type BodyFetcher interface {
 type Digester struct {
 	store      Store
 	mail       Mailer
-	summarizer Summarizer  // optional; nil disables newsletter summaries
-	fetcher    BodyFetcher // optional; nil disables newsletter summaries
+	summarizer Summarizer       // optional; nil disables newsletter summaries
+	source     NewsletterSource // optional; nil disables newsletter summaries
 	now        func() time.Time
 }
 
@@ -69,9 +72,9 @@ func (d *Digester) WithClock(now func() time.Time) *Digester {
 
 // WithSummaries enables the opt-in newsletter content summaries. Without it (or
 // with the setting off) the briefing simply omits that section.
-func (d *Digester) WithSummaries(s Summarizer, f BodyFetcher) *Digester {
+func (d *Digester) WithSummaries(s Summarizer, src NewsletterSource) *Digester {
 	d.summarizer = s
-	d.fetcher = f
+	d.source = src
 	return d
 }
 
@@ -105,7 +108,7 @@ func (d *Digester) Send(ctx context.Context) error {
 	proposals, _ := d.store.SieveCandidates(store.SieveProposed)
 	unsubs, _ := d.store.UnsubscribeCandidates(store.UnsubNeedsDecision)
 	llm, _ := d.store.LLMCallsToday()
-	highlights := d.newsletterHighlights(ctx, decisions)
+	highlights := d.newsletterHighlights(ctx, cutoff)
 
 	subject, htmlBody, textBody := ComposeHTML(BriefingData{
 		Decisions: decisions, Errors: errs, Proposals: proposals,
@@ -128,42 +131,39 @@ func (d *Digester) Send(ctx context.Context) error {
 	return d.store.SetLastDigestAt(now.UTC().Format(time.RFC3339Nano))
 }
 
-// newsletterHighlights builds the opt-in newsletter summaries. It only runs when
-// a summarizer + fetcher are wired AND the toggle is on; it is scoped to the
-// Newsletters category, capped, and best-effort — any failure simply omits the
-// section so the briefing still sends.
-func (d *Digester) newsletterHighlights(ctx context.Context, decisions []store.Decision) []NewsletterHighlight {
-	if d.summarizer == nil || d.fetcher == nil {
+// newsletterHighlights builds the opt-in newsletter summaries. It reads the
+// Newsletters folder directly (not Winnow's decision log), so it includes mail
+// moved there by Fastmail filters or graduated Sieve rules that inbox triage
+// never saw. It only runs when a summarizer + source are wired AND the toggle is
+// on; it is capped and best-effort — any failure simply omits the section so the
+// briefing still sends.
+func (d *Digester) newsletterHighlights(ctx context.Context, since time.Time) []NewsletterHighlight {
+	if d.summarizer == nil || d.source == nil {
 		return nil
 	}
-	on, model, err := d.store.NewsletterConfig()
-	if err != nil || !on {
+	on, model, folder, err := d.store.NewsletterConfig()
+	if err != nil || !on || folder == "" {
+		return nil
+	}
+	mb, ok, err := d.source.MailboxByName(ctx, folder)
+	if err != nil || !ok {
+		return nil
+	}
+	ids, err := d.source.QueryMailboxSince(ctx, mb.ID, since, maxNewsletters)
+	if err != nil || len(ids) == 0 {
 		return nil
 	}
 
-	// Collect distinct Newsletters-category emails from the window, newest-first,
-	// capped.
+	// Resolve sender/subject for each (independent of any Winnow decision).
 	type meta struct{ sender, subject string }
-	var ids []string
 	byID := map[string]meta{}
-	for _, dec := range decisions {
-		if dec.Category != newsletterCategory || dec.EmailID == "" {
-			continue
+	if emails, e := d.source.GetEmails(ctx, ids); e == nil {
+		for _, em := range emails {
+			byID[em.ID] = meta{sender: em.SenderEmail(), subject: firstNonEmpty(em.Subject, em.SenderEmail())}
 		}
-		if _, seen := byID[dec.EmailID]; seen {
-			continue
-		}
-		byID[dec.EmailID] = meta{sender: dec.Sender, subject: firstNonEmpty(dec.Subject, dec.Sender)}
-		ids = append(ids, dec.EmailID)
-		if len(ids) >= maxNewsletters {
-			break
-		}
-	}
-	if len(ids) == 0 {
-		return nil
 	}
 
-	bodies, err := d.fetcher.FetchTextBodies(ctx, ids, maxBodyBytes)
+	bodies, err := d.source.FetchTextBodies(ctx, ids, maxBodyBytes)
 	if err != nil {
 		return nil
 	}

@@ -209,14 +209,22 @@ func TestBoolSettingsRoundTrip(t *testing.T) {
 
 func TestNewsletterConfig(t *testing.T) {
 	s := testStore(t)
-	if on, _, _ := s.NewsletterConfig(); on {
+	if on, _, _, _ := s.NewsletterConfig(); on {
 		t.Error("newsletter summaries should default off")
 	}
 	_ = s.SetSetting("newsletter_summaries", "true")
 	_ = s.SetSetting("model", "claude-sonnet-4-6")
-	on, model, err := s.NewsletterConfig()
+	on, model, folder, err := s.NewsletterConfig()
 	if err != nil || !on || model != "claude-sonnet-4-6" {
-		t.Errorf("NewsletterConfig = (%v, %q, %v)", on, model, err)
+		t.Errorf("NewsletterConfig = (%v, %q, %q, %v)", on, model, folder, err)
+	}
+	if folder != "Newsletters" { // default when no Newsletters category exists
+		t.Errorf("default folder = %q, want Newsletters", folder)
+	}
+	// A Newsletters category's destination folder overrides the default.
+	_, _ = s.CreateCategory(Category{Name: "Newsletters", DestinationFolder: "Reading"})
+	if _, _, f, _ := s.NewsletterConfig(); f != "Reading" {
+		t.Errorf("folder from category = %q, want Reading", f)
 	}
 }
 

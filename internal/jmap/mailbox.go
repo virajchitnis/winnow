@@ -55,6 +55,26 @@ func (c *Client) MailboxByRole(ctx context.Context, role string) (Mailbox, bool,
 	return Mailbox{}, false, nil
 }
 
+// MailboxByName returns the mailbox with the given name (case-insensitive),
+// preferring a top-level one. Does not create it.
+func (c *Client) MailboxByName(ctx context.Context, name string) (Mailbox, bool, error) {
+	boxes, err := c.Mailboxes(ctx)
+	if err != nil {
+		return Mailbox{}, false, err
+	}
+	var found Mailbox
+	ok := false
+	for _, m := range boxes {
+		if strings.EqualFold(m.Name, name) {
+			if m.ParentID == "" {
+				return m, true, nil
+			}
+			found, ok = m, true
+		}
+	}
+	return found, ok, nil
+}
+
 // EnsureMailbox returns the id of a top-level mailbox with the given name,
 // creating it if absent. Name matching is case-insensitive on the exact name.
 func (c *Client) EnsureMailbox(ctx context.Context, name string) (string, error) {

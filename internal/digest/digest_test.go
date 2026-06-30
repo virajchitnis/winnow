@@ -67,9 +67,11 @@ func (f fakeStore) SieveCandidates(string) ([]store.SieveCandidate, error) {
 func (f fakeStore) UnsubscribeCandidates(string) ([]store.UnsubscribeRecord, error) {
 	return nil, nil
 }
-func (f fakeStore) LLMCallsToday() (int, error)             { return 0, nil }
-func (f fakeStore) LastDigestAt() (string, error)           { return "", nil }
-func (f fakeStore) NewsletterConfig() (bool, string, error) { return f.nlOn, "m", nil }
+func (f fakeStore) LLMCallsToday() (int, error)   { return 0, nil }
+func (f fakeStore) LastDigestAt() (string, error) { return "", nil }
+func (f fakeStore) NewsletterConfig() (bool, string, string, error) {
+	return f.nlOn, "m", "Newsletters", nil
+}
 func (f *fakeStore) SetLastDigestAt(ts string) error {
 	f.lastSetTo = ts
 	return nil
@@ -112,29 +114,48 @@ func (f fakeSummarizer) SummarizeNewsletters(_ context.Context, _ string, _ []cl
 	return f.out, nil
 }
 
-type fakeFetcher struct{ bodies map[string]string }
+// fakeSource reads "newsletters" from an in-memory folder.
+type fakeSource struct {
+	box    jmap.Mailbox
+	boxOK  bool
+	ids    []string
+	emails []jmap.Email
+	bodies map[string]string
+}
 
-func (f fakeFetcher) FetchTextBodies(_ context.Context, _ []string, _ int) (map[string]string, error) {
+func (f fakeSource) MailboxByName(context.Context, string) (jmap.Mailbox, bool, error) {
+	return f.box, f.boxOK, nil
+}
+func (f fakeSource) QueryMailboxSince(context.Context, string, time.Time, int) ([]string, error) {
+	return f.ids, nil
+}
+func (f fakeSource) GetEmails(context.Context, []string) ([]jmap.Email, error) {
+	return f.emails, nil
+}
+func (f fakeSource) FetchTextBodies(context.Context, []string, int) (map[string]string, error) {
 	return f.bodies, nil
+}
+
+func newsletterSource() fakeSource {
+	return fakeSource{
+		box: jmap.Mailbox{ID: "mb-news", Name: "Newsletters"}, boxOK: true,
+		ids:    []string{"n1"},
+		emails: []jmap.Email{{ID: "n1", From: []jmap.EmailAddress{{Email: "weekly@news.com"}}, Subject: "This week in tech"}},
+		bodies: map[string]string{"n1": "full newsletter body"},
+	}
 }
 
 func TestNewsletterHighlights(t *testing.T) {
 	fm := &fakeMailer{}
-	fs := &fakeStore{
-		nlOn: true,
-		decisions: []store.Decision{
-			{EmailID: "n1", Sender: "weekly@news.com", Subject: "This week in tech", Category: "Newsletters", Action: "moved"},
-			{Sender: "deals@shop.com", Category: "Promotional", Action: "moved"}, // not a newsletter
-		},
-	}
+	fs := &fakeStore{nlOn: true}
 	d := New(fs, fm).WithSummaries(
 		fakeSummarizer{out: []string{"Three big stories about chips, AI, and launches."}},
-		fakeFetcher{bodies: map[string]string{"n1": "full newsletter body"}},
+		newsletterSource(),
 	)
 	if err := d.Send(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Newsletter highlights", "This week in tech", "Three big stories"} {
+	for _, want := range []string{"Newsletter highlights", "This week in tech", "Three big stories", "weekly@news.com"} {
 		if !strings.Contains(fm.sent.HTML, want) {
 			t.Errorf("briefing missing %q", want)
 		}
@@ -143,13 +164,8 @@ func TestNewsletterHighlights(t *testing.T) {
 
 func TestNewsletterHighlightsOffByDefault(t *testing.T) {
 	fm := &fakeMailer{}
-	fs := &fakeStore{nlOn: false, decisions: []store.Decision{
-		{EmailID: "n1", Sender: "weekly@news.com", Category: "Newsletters", Action: "moved"},
-	}}
-	d := New(fs, fm).WithSummaries(
-		fakeSummarizer{out: []string{"should not appear"}},
-		fakeFetcher{bodies: map[string]string{"n1": "body"}},
-	)
+	fs := &fakeStore{nlOn: false}
+	d := New(fs, fm).WithSummaries(fakeSummarizer{out: []string{"should not appear"}}, newsletterSource())
 	if err := d.Send(context.Background()); err != nil {
 		t.Fatal(err)
 	}

@@ -168,20 +168,27 @@ func (s *Store) LastDigestAt() (string, error) {
 // SetLastDigestAt records the send time of the latest digest/briefing.
 func (s *Store) SetLastDigestAt(ts string) error { return s.SetSetting(keyLastDigestAt, ts) }
 
-// NewsletterConfig returns whether the opt-in newsletter summaries are enabled
-// and the model to use for them.
-func (s *Store) NewsletterConfig() (bool, string, error) {
-	on := false
-	if v, ok, err := s.GetSetting(keyNewsletterSum); err != nil {
-		return false, "", err
+// NewsletterConfig returns whether the opt-in newsletter summaries are enabled,
+// the model to use, and the folder to read newsletters from (the Newsletters
+// category's destination, so server-side-filtered mail is included). Reading the
+// folder directly — rather than Winnow's decision log — is what lets the
+// summaries cover newsletters moved there by Fastmail filters or graduated
+// Sieve rules before Winnow ever sees them.
+func (s *Store) NewsletterConfig() (on bool, model, folder string, err error) {
+	if v, ok, e := s.GetSetting(keyNewsletterSum); e != nil {
+		return false, "", "", e
 	} else if ok {
 		on = parseBool(v, false)
 	}
-	model := "claude-haiku-4-5"
+	model = "claude-haiku-4-5"
 	if v, ok, _ := s.GetSetting(keyModel); ok && v != "" {
 		model = v
 	}
-	return on, model, nil
+	folder = "Newsletters"
+	if cat, ok, _ := s.CategoryByName("Newsletters"); ok && cat.DestinationFolder != "" {
+		folder = cat.DestinationFolder
+	}
+	return on, model, folder, nil
 }
 
 func boolStr(b bool) string {

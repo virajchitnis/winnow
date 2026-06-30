@@ -99,6 +99,42 @@ func (c *Client) QueryInbox(ctx context.Context, mailboxID string, limit int) ([
 	return res.IDs, nil
 }
 
+// QueryMailboxSince returns up to limit email ids in the given mailbox received
+// at/after `after`, newest first. Used to read newsletters that arrived since
+// the last briefing — including ones filtered server-side, which never reach
+// Winnow's inbox triage.
+func (c *Client) QueryMailboxSince(ctx context.Context, mailboxID string, after time.Time, limit int) ([]string, error) {
+	sess, err := c.getSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	filter := map[string]any{"inMailbox": mailboxID}
+	if !after.IsZero() {
+		filter["after"] = after.UTC().Format(time.RFC3339)
+	}
+	call, err := newCall("Email/query", map[string]any{
+		"accountId":      sess.AccountID(),
+		"filter":         filter,
+		"sort":           []map[string]any{{"property": "receivedAt", "isAscending": false}},
+		"limit":          limit,
+		"calculateTotal": false,
+	}, "qm")
+	if err != nil {
+		return nil, err
+	}
+	resps, err := c.do(ctx, []string{CapCore, CapMail}, call)
+	if err != nil {
+		return nil, err
+	}
+	var res struct {
+		IDs []string `json:"ids"`
+	}
+	if err := expect(resps, "qm", &res); err != nil {
+		return nil, err
+	}
+	return res.IDs, nil
+}
+
 // Changes is the result of an Email/changes call.
 type Changes struct {
 	OldState  string
