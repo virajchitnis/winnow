@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	maxNewsletters     = 12   // cap summaries per briefing (cost control)
-	maxBodyBytes       = 6000 // truncate each body before summarizing
-	summarizeMaxTokens = 1024
+	maxNewsletters   = 12   // cap newsletters fed per briefing (cost control)
+	maxBodyBytes     = 7000 // truncate each body before sending to the model
+	composeMaxTokens = 2048 // room for a richer, synthesized briefing
 )
 
 // Store is the persistence surface the digest reads.
@@ -36,9 +36,10 @@ type Mailer interface {
 	SendEmail(ctx context.Context, msg jmap.OutgoingMessage) error
 }
 
-// Summarizer batch-summarizes newsletter bodies (the opt-in Phase B section).
+// Summarizer composes the newsletters into one synthesized, themed briefing
+// (the opt-in newsletter section).
 type Summarizer interface {
-	SummarizeNewsletters(ctx context.Context, model string, items []classify.NewsletterInput, maxTokens int) ([]string, error)
+	ComposeBriefing(ctx context.Context, model string, items []classify.NewsletterInput, maxTokens int) ([]classify.BriefingSection, error)
 }
 
 // NewsletterSource reads newsletters straight from their folder — including mail
@@ -108,11 +109,11 @@ func (d *Digester) Send(ctx context.Context) error {
 	proposals, _ := d.store.SieveCandidates(store.SieveProposed)
 	unsubs, _ := d.store.UnsubscribeCandidates(store.UnsubNeedsDecision)
 	llm, _ := d.store.LLMCallsToday()
-	highlights := d.newsletterHighlights(ctx, cutoff)
+	sections := d.newsletterDigest(ctx, cutoff)
 
 	subject, htmlBody, textBody := ComposeHTML(BriefingData{
 		Decisions: decisions, Errors: errs, Proposals: proposals,
-		Unsubs: unsubs, Highlights: highlights, LLMToday: llm, Since: since, Now: now,
+		Unsubs: unsubs, Sections: sections, LLMToday: llm, Since: since, Now: now,
 	})
 
 	ident, err := d.mail.PrimaryIdentity(ctx)
@@ -131,13 +132,13 @@ func (d *Digester) Send(ctx context.Context) error {
 	return d.store.SetLastDigestAt(now.UTC().Format(time.RFC3339Nano))
 }
 
-// newsletterHighlights builds the opt-in newsletter summaries. It reads the
-// Newsletters folder directly (not Winnow's decision log), so it includes mail
-// moved there by Fastmail filters or graduated Sieve rules that inbox triage
-// never saw. It only runs when a summarizer + source are wired AND the toggle is
-// on; it is capped and best-effort — any failure simply omits the section so the
-// briefing still sends.
-func (d *Digester) newsletterHighlights(ctx context.Context, since time.Time) []NewsletterHighlight {
+// newsletterDigest composes a single synthesized briefing from the newsletters
+// received since `since`. It reads the Newsletters folder directly (not Winnow's
+// decision log), so it includes mail moved there by Fastmail filters or
+// graduated Sieve rules that inbox triage never saw. It only runs when a
+// summarizer + source are wired AND the toggle is on; it is capped and
+// best-effort — any failure simply omits the section so the briefing still sends.
+func (d *Digester) newsletterDigest(ctx context.Context, since time.Time) []classify.BriefingSection {
 	if d.summarizer == nil || d.source == nil {
 		return nil
 	}
@@ -154,7 +155,8 @@ func (d *Digester) newsletterHighlights(ctx context.Context, since time.Time) []
 		return nil
 	}
 
-	// Resolve sender/subject for each (independent of any Winnow decision).
+	// Sender/subject give the model context for citations (independent of any
+	// Winnow decision).
 	type meta struct{ sender, subject string }
 	byID := map[string]meta{}
 	if emails, e := d.source.GetEmails(ctx, ids); e == nil {
@@ -168,7 +170,6 @@ func (d *Digester) newsletterHighlights(ctx context.Context, since time.Time) []
 		return nil
 	}
 	var inputs []classify.NewsletterInput
-	var order []string
 	for _, id := range ids {
 		body := bodies[id]
 		if body == "" {
@@ -176,25 +177,16 @@ func (d *Digester) newsletterHighlights(ctx context.Context, since time.Time) []
 		}
 		m := byID[id]
 		inputs = append(inputs, classify.NewsletterInput{Sender: m.sender, Subject: m.subject, Body: body})
-		order = append(order, id)
 	}
 	if len(inputs) == 0 {
 		return nil
 	}
 
-	summaries, err := d.summarizer.SummarizeNewsletters(ctx, model, inputs, summarizeMaxTokens)
+	sections, err := d.summarizer.ComposeBriefing(ctx, model, inputs, composeMaxTokens)
 	if err != nil {
 		return nil
 	}
-	var out []NewsletterHighlight
-	for i, id := range order {
-		if i >= len(summaries) || summaries[i] == "" {
-			continue
-		}
-		m := byID[id]
-		out = append(out, NewsletterHighlight{Sender: m.sender, Subject: m.subject, Summary: summaries[i]})
-	}
-	return out
+	return sections
 }
 
 func firstNonEmpty(a, b string) string {

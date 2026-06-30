@@ -26,8 +26,9 @@ over time. The name comes from *winnowing*: separating the grain from the chaff.
   methods (RFC 8058 One-Click, `mailto:`).
 - **Morning briefing** — a polished daily HTML email (default 6am) with what was
   filed, what needs your attention, approvals waiting, stats, and cost/health.
-  Doubles as a heartbeat. Optional, opt-in: AI **summaries of your newsletters'
-  content** (the only feature that sends bodies to Claude).
+  Doubles as a heartbeat. Optional, opt-in: a **synthesized digest of your
+  newsletters** — Claude reads everything in your Newsletters folder and composes
+  one themed read (the only feature that sends bodies to Claude).
 - **A small web dashboard** to review/correct decisions and tune everything,
   reachable privately over Tailscale and (optionally) via a Cloudflare Tunnel.
   Server-rendered with a tiny self-hosted [htmx](https://htmx.org) for snappy

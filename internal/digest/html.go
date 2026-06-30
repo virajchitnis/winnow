@@ -7,24 +7,20 @@ import (
 	"time"
 
 	"winnow/internal/actions"
+	"winnow/internal/classify"
 	"winnow/internal/store"
 )
 
-// NewsletterHighlight is one summarized newsletter (opt-in Phase B section).
-type NewsletterHighlight struct {
-	Sender, Subject, Summary string
-}
-
 // BriefingData is everything the HTML morning briefing renders.
 type BriefingData struct {
-	Decisions  []store.Decision
-	Errors     []store.AppError
-	Proposals  []store.SieveCandidate    // pending Sieve rule proposals
-	Unsubs     []store.UnsubscribeRecord // unsubscribe candidates needing a decision
-	Highlights []NewsletterHighlight     // summarized newsletters (opt-in)
-	LLMToday   int
-	Since      time.Time
-	Now        time.Time
+	Decisions []store.Decision
+	Errors    []store.AppError
+	Proposals []store.SieveCandidate     // pending Sieve rule proposals
+	Unsubs    []store.UnsubscribeRecord  // unsubscribe candidates needing a decision
+	Sections  []classify.BriefingSection // synthesized newsletter digest (opt-in)
+	LLMToday  int
+	Since     time.Time
+	Now       time.Time
 }
 
 // htmlView is the flattened model passed to the template.
@@ -36,7 +32,7 @@ type htmlView struct {
 	PerCategory, TopSenders     []countKV
 	Proposals                   []proposalRow
 	Unsubs                      []unsubRow
-	Highlights                  []NewsletterHighlight
+	Sections                    []classify.BriefingSection
 	LLMToday                    int
 	Errors                      []errRow
 	HasApprovals                bool
@@ -89,7 +85,7 @@ func ComposeHTML(d BriefingData) (subject, htmlBody, textBody string) {
 	for _, u := range d.Unsubs {
 		v.Unsubs = append(v.Unsubs, unsubRow{Sender: u.Sender, Count: u.Count})
 	}
-	v.Highlights = d.Highlights
+	v.Sections = d.Sections
 	v.HasApprovals = len(v.Proposals) > 0 || len(v.Unsubs) > 0
 	for _, e := range d.Errors {
 		v.Errors = append(v.Errors, errRow{Kind: e.Kind, Message: oneLine(e.Message)})
@@ -188,15 +184,14 @@ var briefingTmpl = template.Must(template.New("briefing").Funcs(template.FuncMap
   </td></tr>
   {{end}}
 
-  {{if .Highlights}}
-  {{template "section" "📰 Newsletter highlights"}}
-  <tr><td style="padding:0 24px 8px;">
-    {{range .Highlights}}<div style="padding:8px 0;border-bottom:1px solid #efefef;">
-      <div style="font-size:14px;font-weight:600;">{{.Subject}}</div>
-      <div style="font-size:12px;color:#8a8a86;">{{.Sender}}</div>
-      <div style="font-size:13px;color:#3a3a38;margin-top:3px;">{{.Summary}}</div>
-    </div>{{end}}
+  {{if .Sections}}
+  {{template "section" "📰 Your newsletter digest"}}
+  {{range .Sections}}
+  <tr><td style="padding:8px 24px 0;"><div style="font-size:14px;font-weight:700;color:#0f6e56;">{{.Heading}}</div></td></tr>
+  <tr><td style="padding:2px 24px 6px;font-size:13px;color:#2c2c2a;line-height:1.5;">
+    {{range .Items}}<div style="padding:3px 0 3px 16px;text-indent:-12px;">• {{.}}</div>{{end}}
   </td></tr>
+  {{end}}
   {{end}}
 
   {{if .PerCategory}}

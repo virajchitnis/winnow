@@ -108,9 +108,9 @@ func TestSendToSelf(t *testing.T) {
 	}
 }
 
-type fakeSummarizer struct{ out []string }
+type fakeSummarizer struct{ out []classify.BriefingSection }
 
-func (f fakeSummarizer) SummarizeNewsletters(_ context.Context, _ string, _ []classify.NewsletterInput, _ int) ([]string, error) {
+func (f fakeSummarizer) ComposeBriefing(_ context.Context, _ string, _ []classify.NewsletterInput, _ int) ([]classify.BriefingSection, error) {
 	return f.out, nil
 }
 
@@ -145,31 +145,35 @@ func newsletterSource() fakeSource {
 	}
 }
 
-func TestNewsletterHighlights(t *testing.T) {
+func composedBriefing() []classify.BriefingSection {
+	return []classify.BriefingSection{
+		{Heading: "Tech & AI", Items: []string{"A new model shipped (The Verge).", "Chip supply easing."}},
+		{Heading: "Markets", Items: []string{"Rates held steady."}},
+	}
+}
+
+func TestNewsletterDigest(t *testing.T) {
 	fm := &fakeMailer{}
 	fs := &fakeStore{nlOn: true}
-	d := New(fs, fm).WithSummaries(
-		fakeSummarizer{out: []string{"Three big stories about chips, AI, and launches."}},
-		newsletterSource(),
-	)
+	d := New(fs, fm).WithSummaries(fakeSummarizer{out: composedBriefing()}, newsletterSource())
 	if err := d.Send(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Newsletter highlights", "This week in tech", "Three big stories", "weekly@news.com"} {
+	for _, want := range []string{"Your newsletter digest", "Tech &amp; AI", "A new model shipped", "Markets", "Rates held steady"} {
 		if !strings.Contains(fm.sent.HTML, want) {
 			t.Errorf("briefing missing %q", want)
 		}
 	}
 }
 
-func TestNewsletterHighlightsOffByDefault(t *testing.T) {
+func TestNewsletterDigestOffByDefault(t *testing.T) {
 	fm := &fakeMailer{}
 	fs := &fakeStore{nlOn: false}
-	d := New(fs, fm).WithSummaries(fakeSummarizer{out: []string{"should not appear"}}, newsletterSource())
+	d := New(fs, fm).WithSummaries(fakeSummarizer{out: composedBriefing()}, newsletterSource())
 	if err := d.Send(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(fm.sent.HTML, "Newsletter highlights") {
+	if strings.Contains(fm.sent.HTML, "Your newsletter digest") {
 		t.Error("summaries must be off unless the setting is enabled")
 	}
 }
