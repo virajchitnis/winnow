@@ -19,17 +19,21 @@ type Decision struct {
 	CreatedAt     string
 }
 
-// RecordDecision appends a decision to the log. To keep previews idempotent it
-// holds at most one preview (dry_run) decision per email: recording any new
-// non-error decision for an email first clears its prior preview row, so
-// re-running a dry-run sweep replaces previews instead of piling up duplicates,
-// and a later real decision supersedes the preview cleanly.
+// RecordDecision records a decision, keeping at most one row per email: a new
+// non-error decision supersedes any prior decision for that email, so the Review
+// list shows each email once — a re-triage, a re-run preview, or a manual
+// Move & teach replaces the old row instead of duplicating it. An error is
+// recorded without clobbering a good prior decision (it's transient and the next
+// success supersedes it), and only dedupes against prior error rows.
 func (s *Store) RecordDecision(d Decision) error {
-	if d.Action != "error" {
+	if d.Action == "error" {
 		if _, err := s.db.Exec(
-			"DELETE FROM decisions WHERE email_id = ? AND action = 'dry_run'", d.EmailID); err != nil {
+			"DELETE FROM decisions WHERE email_id = ? AND action = 'error'", d.EmailID); err != nil {
 			return err
 		}
+	} else if _, err := s.db.Exec(
+		"DELETE FROM decisions WHERE email_id = ?", d.EmailID); err != nil {
+		return err
 	}
 	_, err := s.db.Exec(`
 		INSERT INTO decisions(email_id, thread_id, sender, subject, category, confidence,

@@ -299,6 +299,32 @@ func TestDecisionsLog(t *testing.T) {
 	}
 }
 
+func TestRecordDecisionSupersedes(t *testing.T) {
+	s := testStore(t)
+	// Triage files it, then a manual Move & teach re-files it: the email must
+	// appear once, showing the latest decision — not two rows.
+	_ = s.RecordDecision(Decision{EmailID: "e1", Category: "Promotional", Action: "moved", Confidence: 0.9})
+	_ = s.RecordDecision(Decision{EmailID: "e1", Category: "Important", Action: "flagged", Confidence: 1, Reason: "manual re-file"})
+
+	recent, _ := s.RecentDecisions(10)
+	if len(recent) != 1 {
+		t.Fatalf("want 1 row per email, got %d: %+v", len(recent), recent)
+	}
+	if recent[0].Category != "Important" || recent[0].Action != "flagged" {
+		t.Errorf("latest decision should win: %+v", recent[0])
+	}
+	// A transient error does not clobber the good decision.
+	_ = s.RecordDecision(Decision{EmailID: "e1", Action: "error"})
+	if r, _ := s.RecentDecisions(10); len(r) != 2 {
+		t.Errorf("error should be recorded alongside the good row, got %d", len(r))
+	}
+	// A later success collapses back to one row.
+	_ = s.RecordDecision(Decision{EmailID: "e1", Category: "Important", Action: "flagged"})
+	if r, _ := s.RecentDecisions(10); len(r) != 1 {
+		t.Errorf("success should supersede prior rows, got %d", len(r))
+	}
+}
+
 func TestQueryDecisions(t *testing.T) {
 	s := testStore(t)
 	for i := 0; i < 5; i++ {
